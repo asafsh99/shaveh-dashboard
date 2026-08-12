@@ -194,7 +194,10 @@ window.TabOverview = (function () {
         const ww = DataValidator.calculateWeightedAverageWomenWage(sub);
         const g = DataValidator.calculateGenderPayGap(mw, ww);
         if (g !== null) {
-          heatData.push([ri, bi, Math.round(g * 10) / 10, hc, Math.round(mw), Math.round(ww)]);
+          heatData.push({
+            value: [ri, bi, Math.round(g * 10) / 10, hc, Math.round(mw), Math.round(ww)],
+            label: { color: '#000', fontWeight: 'bold' }
+          });
         }
       });
     });
@@ -270,9 +273,15 @@ window.TabOverview = (function () {
         data: heatData,
         label: {
           show: true,
-          formatter: p => p.value[2] + '%',
-          fontFamily: 'Heebo', fontSize: 10,
-          color: p => (p.value && p.value[2] > 30) ? '#fff' : '#334155'
+          formatter: p => '{a|' + p.value[2] + '%}',
+          rich: {
+            a: {
+              color: '#000',
+              fontFamily: 'Heebo',
+              fontSize: 11,
+              fontWeight: 700
+            }
+          }
         },
         emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)' } }
       }]

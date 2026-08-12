@@ -223,14 +223,22 @@ window.TabQuality = (function () {
     overview.forEach(r => {
       if (!r.bodyName) return;
       if (!ovBodyMap[r.bodyName]) {
-        ovBodyMap[r.bodyName] = { hc: 0, wageSum: 0, system: r.system };
+        ovBodyMap[r.bodyName] = { hc: 0, wageSum: 0, wageHc: 0, system: r.system };
       }
-      const hc = (r.menCount || 0) + (r.womenCount || 0);
-      const menWageSum = (r.avgMenWage || 0) * (r.menCount || 0);
-      const womenWageSum = (r.avgWomenWage || 0) * (r.womenCount || 0);
       
-      ovBodyMap[r.bodyName].hc += hc;
-      ovBodyMap[r.bodyName].wageSum += (menWageSum + womenWageSum);
+      const mHc = r.menCount || 0;
+      const wHc = r.womenCount || 0;
+      
+      if (r.avgMenWage) {
+        ovBodyMap[r.bodyName].wageSum += r.avgMenWage * mHc;
+        ovBodyMap[r.bodyName].wageHc += mHc;
+      }
+      if (r.avgWomenWage) {
+        ovBodyMap[r.bodyName].wageSum += r.avgWomenWage * wHc;
+        ovBodyMap[r.bodyName].wageHc += wHc;
+      }
+      
+      ovBodyMap[r.bodyName].hc += (mHc + wHc);
     });
 
     const seriesMap = {};
@@ -239,7 +247,9 @@ window.TabQuality = (function () {
       const mwHc = mwBodyMap[body] || 0;
       if (ov.hc < 10) return;
 
-      const avgWage = ov.wageSum / ov.hc;
+      const avgWage = ov.wageHc > 0 ? (ov.wageSum / ov.wageHc) : 0;
+      if (avgWage === 0) return; // Don't plot bodies with no wage data
+
       const mwPct = (mwHc / ov.hc) * 100;
       if (mwPct > 0) {
         if (!seriesMap[ov.system]) seriesMap[ov.system] = [];
@@ -254,7 +264,6 @@ window.TabQuality = (function () {
       return {
         name: sys,
         type: 'scatter',
-        symbolSize: val => Math.max(5, Math.sqrt(val[2]) / 1.5),
         itemStyle: {
           opacity: 0.8,
           borderColor: '#fff',
@@ -289,29 +298,31 @@ window.TabQuality = (function () {
         },
         textStyle: { fontFamily: 'Heebo' }
       },
-      grid: { left: 60, right: 30, top: 70, bottom: 40 },
+      grid: { left: 70, right: 70, top: 80, bottom: 60 },
       xAxis: {
         type: 'value',
         name: 'שכר ברוטו ממוצע (₪)',
         nameLocation: 'middle',
-        nameGap: 25,
+        nameGap: 35,
         axisLabel: { fontFamily: 'Heebo', fontSize: 11, formatter: '{value} ₪' },
         splitLine: { lineStyle: { color: COLORS.gridLine } },
-        scale: true,
-        min: value => Math.max(0, value.min - 1500),
-        max: value => value.max + 1500
+        scale: true
       },
       yAxis: {
         type: 'value',
         name: '% מקבלי השלמה',
         nameLocation: 'middle',
-        nameGap: 35,
+        nameGap: 45,
         axisLabel: { fontFamily: 'Heebo', fontSize: 11, formatter: '{value}%' },
         splitLine: { lineStyle: { color: COLORS.gridLine } },
-        min: -15,
-        max: 115
+        min: 0,
+        max: 100
       },
-      series: series
+      series: series.map(s => {
+        s.symbolSize = val => Math.max(5, Math.min(90, Math.sqrt(val[2]) / 3.5));
+        s.clip = false;
+        return s;
+      })
     });
   }
 
