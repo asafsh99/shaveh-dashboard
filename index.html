@@ -85,7 +85,7 @@
         </div>
         
         <!-- Custom Checkbox Dropdown: System -->
-        <div class="relative w-[200px]" id="dropdownContainer-system">
+        <div class="relative w-[180px]" id="dropdownContainer-system">
           <button id="btnDropdown-system" class="w-full h-9 bg-white border border-slate-200 rounded px-3 text-right text-sm font-medium text-slate-700 shadow-sm flex justify-between items-center focus:outline-none hover:bg-slate-50 transition-colors">
             <span id="labelDropdown-system" class="truncate">כל המערכות</span>
             <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -98,8 +98,22 @@
           </div>
         </div>
 
+        <!-- Custom Checkbox Dropdown: SubSystem -->
+        <div class="relative w-[180px]" id="dropdownContainer-subSystem">
+          <button id="btnDropdown-subSystem" class="w-full h-9 bg-white border border-slate-200 rounded px-3 text-right text-sm font-medium text-slate-700 shadow-sm flex justify-between items-center focus:outline-none hover:bg-slate-50 transition-colors">
+            <span id="labelDropdown-subSystem" class="truncate">כל תת-המערכות</span>
+            <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div id="menuDropdown-subSystem" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-50 flex flex-col max-h-64">
+            <div class="p-2 border-b border-slate-100">
+              <input type="text" id="searchDropdown-subSystem" placeholder="חיפוש..." class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-brand-500">
+            </div>
+            <div id="listDropdown-subSystem" class="overflow-y-auto flex-1 p-1"></div>
+          </div>
+        </div>
+
         <!-- Custom Checkbox Dropdown: Body -->
-        <div class="relative w-[250px]" id="dropdownContainer-body">
+        <div class="relative w-[200px]" id="dropdownContainer-body">
           <button id="btnDropdown-body" class="w-full h-9 bg-white border border-slate-200 rounded px-3 text-right text-sm font-medium text-slate-700 shadow-sm flex justify-between items-center focus:outline-none hover:bg-slate-50 transition-colors">
             <span id="labelDropdown-body" class="truncate">כל הגופים</span>
             <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -113,7 +127,7 @@
         </div>
 
         <!-- Custom Checkbox Dropdown: Rank -->
-        <div class="relative w-[200px]" id="dropdownContainer-rank">
+        <div class="relative w-[180px]" id="dropdownContainer-rank">
           <button id="btnDropdown-rank" class="w-full h-9 bg-white border border-slate-200 rounded px-3 text-right text-sm font-medium text-slate-700 shadow-sm flex justify-between items-center focus:outline-none hover:bg-slate-50 transition-colors">
             <span id="labelDropdown-rank" class="truncate">כל הדירוגים</span>
             <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -395,16 +409,16 @@
     </div>
   </div>
 
-  <script src="scripts/parser.js?v=10"></script>
-  <script src="scripts/validator.js?v=10"></script>
-  <script src="scripts/insights.js?v=10"></script>
+  <script src="scripts/parser.js?v=11"></script>
+  <script src="scripts/validator.js?v=11"></script>
+  <script src="scripts/insights.js?v=11"></script>
   
-  <script src="scripts/tabs/overview.js?v=10"></script>
-  <script src="scripts/tabs/ranks.js?v=10"></script>
-  <script src="scripts/tabs/quality.js?v=10"></script>
-  <script src="scripts/tabs/trends.js?v=10"></script>
-  <script src="scripts/tabs/directory.js?v=10"></script>
+  <script src="scripts/tabs/overview.js?v=11"></script>
+  <script src="scripts/tabs/ranks.js?v=11"></script>
+  <script src="scripts/tabs/quality.js?v=11"></script>
+  <script src="scripts/tabs/trends.js?v=11"></script>
+  <script src="scripts/tabs/directory.js?v=11"></script>
   
-  <script src="scripts/app.js?v=10"></script>
+  <script src="scripts/app.js?v=11"></script>
 </body>
 </html>

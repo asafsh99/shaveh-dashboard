@@ -18,16 +18,18 @@ window.App = (function() {
     filters: {
       year: 2024,         // Default to latest year (strictly single-select)
       system: [],
+      subSystem: [],
       bodyName: [],
       rank: []
     },
     filterOptions: {
       years: [],
       systems: [],
+      subSystems: [],
       bodies: [],
       ranks: []
     },
-    dropdownCache: { system: '', body: '', rank: '' }
+    dropdownCache: { system: '', subSystem: '', body: '', rank: '' }
   };
 
   // ── Initialization & Data Load ────────────────────────────────
@@ -127,16 +129,16 @@ window.App = (function() {
   function applyFilterUIConstraints(tabId) {
     const yearEl = document.getElementById('filterYear');
     const sysEl = document.getElementById('btnDropdown-system');
+    const subSysEl = document.getElementById('btnDropdown-subSystem');
     const bodyEl = document.getElementById('btnDropdown-body');
     const rankEl = document.getElementById('btnDropdown-rank');
     const yearLabel = document.getElementById('yearFilterAlert');
 
-    // Year is disabled in Trends (it shows all years)
     if (tabId === 'trends') {
       yearEl.disabled = true;
       yearEl.classList.add('opacity-50', 'cursor-not-allowed');
       yearLabel.classList.remove('hidden');
-      // Body and Rank are irrelevant for Trends
+      if (subSysEl) { subSysEl.disabled = true; subSysEl.classList.add('opacity-50'); }
       bodyEl.disabled = true; bodyEl.classList.add('opacity-50');
       rankEl.disabled = true; rankEl.classList.add('opacity-50');
     } else {
@@ -145,6 +147,7 @@ window.App = (function() {
       yearLabel.classList.add('hidden');
       
       sysEl.disabled = false; sysEl.classList.remove('opacity-50');
+      if (subSysEl) { subSysEl.disabled = false; subSysEl.classList.remove('opacity-50'); }
       bodyEl.disabled = false; bodyEl.classList.remove('opacity-50');
       
       // Rank is only relevant for Overview and Ranks tabs
@@ -167,6 +170,7 @@ window.App = (function() {
   function extractMasterFilters(records) {
     state.filterOptions.years = extractUnique(records, 'year', (a, b) => a - b);
     state.filterOptions.systems = extractUnique(records, 'system');
+    state.filterOptions.subSystems = extractUnique(records, 'subSystem');
     state.filterOptions.bodies = extractUnique(records, 'bodyName');
     state.filterOptions.ranks = extractUnique(records, 'rank');
 
@@ -197,6 +201,11 @@ window.App = (function() {
     }
     if (upToField === 'system') return records;
 
+    if (state.filters.subSystem && state.filters.subSystem.length > 0) {
+      records = records.filter(r => state.filters.subSystem.includes(r.subSystem));
+    }
+    if (upToField === 'subSystem') return records;
+
     if (state.filters.bodyName && state.filters.bodyName.length > 0) {
       records = records.filter(r => state.filters.bodyName.includes(r.bodyName));
     }
@@ -212,7 +221,10 @@ window.App = (function() {
     const sysPool = getCascadedRecords('year');
     state.filterOptions.systems = extractUnique(sysPool, 'system');
 
-    const bodiesPool = getCascadedRecords('system');
+    const subSysPool = getCascadedRecords('system');
+    state.filterOptions.subSystems = extractUnique(subSysPool, 'subSystem');
+
+    const bodiesPool = getCascadedRecords('subSystem');
     state.filterOptions.bodies = extractUnique(bodiesPool, 'bodyName');
 
     const ranksPool = getCascadedRecords('bodyName');
@@ -226,6 +238,9 @@ window.App = (function() {
     }
     if (state.filters.system && state.filters.system.length > 0) {
       records = records.filter(r => state.filters.system.includes(r.system));
+    }
+    if (state.filters.subSystem && state.filters.subSystem.length > 0 && records.length > 0 && 'subSystem' in records[0]) {
+      records = records.filter(r => state.filters.subSystem.includes(r.subSystem));
     }
     if (state.filters.bodyName && state.filters.bodyName.length > 0) {
       records = records.filter(r => state.filters.bodyName.includes(r.bodyName));
@@ -318,7 +333,8 @@ window.App = (function() {
           }
           
           // Cascading reset
-          if (fieldId === 'system') { state.filters.bodyName = []; state.filters.rank = []; }
+          if (fieldId === 'system') { state.filters.subSystem = []; state.filters.bodyName = []; state.filters.rank = []; }
+          if (fieldId === 'subSystem') { state.filters.bodyName = []; state.filters.rank = []; }
           if (fieldId === 'body') { state.filters.rank = []; }
           
           sortDropdownList(listEl);
@@ -343,6 +359,7 @@ window.App = (function() {
   function renderFilters() {
     populateYearDropdown(state.filterOptions.years, state.filters.year);
     renderCheckboxDropdown('system', 'system', state.filterOptions.systems, 'כל המערכות', state.filters.system);
+    renderCheckboxDropdown('subSystem', 'subSystem', state.filterOptions.subSystems, 'כל תת-המערכות', state.filters.subSystem);
     renderCheckboxDropdown('body', 'bodyName', state.filterOptions.bodies, 'כל הגופים', state.filters.bodyName);
     renderCheckboxDropdown('rank', 'rank', state.filterOptions.ranks, 'כל הדירוגים', state.filters.rank);
 
@@ -410,13 +427,13 @@ window.App = (function() {
     if (yearEl) {
       yearEl.addEventListener('change', (e) => {
         state.filters.year = Number(e.target.value);
-        state.filters.system = []; state.filters.bodyName = []; state.filters.rank = [];
+        state.filters.system = []; state.filters.subSystem = []; state.filters.bodyName = []; state.filters.rank = [];
         onFilterChange();
       });
     }
 
     // Custom Dropdowns UI Events
-    ['system', 'body', 'rank'].forEach(fieldId => {
+    ['system', 'subSystem', 'body', 'rank'].forEach(fieldId => {
       const btn = document.getElementById(`btnDropdown-${fieldId}`);
       const menu = document.getElementById(`menuDropdown-${fieldId}`);
       const search = document.getElementById(`searchDropdown-${fieldId}`);
@@ -465,7 +482,7 @@ window.App = (function() {
     document.getElementById('btnResetFilters').addEventListener('click', () => {
       // Keep year at latest, reset rest
       const latestYear = state.filterOptions.years.length > 0 ? Math.max(...state.filterOptions.years) : 2024;
-      state.filters = { year: latestYear, system: [], bodyName: [], rank: [] };
+      state.filters = { year: latestYear, system: [], subSystem: [], bodyName: [], rank: [] };
       onFilterChange();
     });
 
