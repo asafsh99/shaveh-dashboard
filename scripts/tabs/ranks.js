@@ -243,8 +243,14 @@ window.TabRanks = (function () {
         data: data.map(d => truncate(d.rank, 18)),
         axisLabel: {
           fontFamily: 'Heebo', fontSize: 11,
-          color: p => (data.find(d => truncate(d.rank, 18) === p && d.rank === selectedRank)) ? '#1e3a8a' : '#334155',
-          fontWeight: p => (data.find(d => truncate(d.rank, 18) === p && d.rank === selectedRank)) ? 'bold' : 'normal',
+          color: p => {
+            const item = data.find(d => truncate(d.rank, 18) === p);
+            return (item && item.rank === selectedRank) ? '#1e3a8a' : '#334155';
+          },
+          fontWeight: p => {
+            const item = data.find(d => truncate(d.rank, 18) === p);
+            return (item && item.rank === selectedRank) ? 'bold' : 'normal';
+          },
         },
         axisTick: { show: false },
       },
@@ -255,7 +261,7 @@ window.TabRanks = (function () {
           data: data.map(d => d.gap),
           barWidth: 3,
           itemStyle: {
-            color: p => data[p.dataIndex].gap > 0
+            color: p => (p && p.dataIndex !== undefined && data[p.dataIndex] && data[p.dataIndex].gap > 0)
               ? 'rgba(244,63,94,0.4)' : 'rgba(16,185,129,0.4)',
             borderRadius: 2,
           },
@@ -265,21 +271,21 @@ window.TabRanks = (function () {
         {
           type: 'scatter',
           data: data.map((d, i) => [d.gap, i]),
-          symbolSize: p => (data[p.dataIndex].rank === selectedRank ? 20 : 14),
+          symbolSize: (val, p) => (p && p.dataIndex !== undefined && data[p.dataIndex] && data[p.dataIndex].rank === selectedRank ? 20 : 14),
           itemStyle: {
-            color: p => data[p.dataIndex].rank === selectedRank
+            color: p => (p && p.dataIndex !== undefined && data[p.dataIndex] && data[p.dataIndex].rank === selectedRank)
               ? '#1e3a8a'
-              : (data[p.dataIndex].gap > 0 ? COLORS.gap : COLORS.emerald),
+              : (p && p.dataIndex !== undefined && data[p.dataIndex] && data[p.dataIndex].gap > 0 ? COLORS.gap : COLORS.emerald),
             borderColor: '#fff',
             borderWidth: 2,
           },
           z: 2,
           label: {
             show: true,
-            position: p => data[p.dataIndex].gap > 0 ? 'right' : 'left',
-            formatter: p => data[p.dataIndex].gap + '%',
+            position: p => (p && p.dataIndex !== undefined && data[p.dataIndex] && data[p.dataIndex].gap > 0) ? 'right' : 'left',
+            formatter: p => (p && p.dataIndex !== undefined && data[p.dataIndex]) ? data[p.dataIndex].gap + '%' : '',
             fontFamily: 'Heebo', fontSize: 11, fontWeight: 600,
-            color: p => data[p.dataIndex].gap > 0 ? COLORS.gap : COLORS.emerald,
+            color: p => (p && p.dataIndex !== undefined && data[p.dataIndex] && data[p.dataIndex].gap > 0) ? COLORS.gap : COLORS.emerald,
           }
         }
       ]
