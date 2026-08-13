@@ -252,7 +252,13 @@
       </div>
 
       <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm relative group overflow-hidden">
+          <!-- Scatter Reset Button -->
+          <button id="btnResetScatter" class="absolute top-4 right-4 z-20 hidden flex items-center gap-1 bg-white border border-slate-300 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-slate-50 hover:text-brand-600 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            חזור לכל הדירוגים
+          </button>
+          
           <div id="chartScatter" style="height: 450px;"></div>
         </div>
         <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
@@ -384,16 +390,16 @@
     </div>
   </div>
 
-  <script src="scripts/parser.js?v=6"></script>
-  <script src="scripts/validator.js?v=6"></script>
-  <script src="scripts/insights.js?v=6"></script>
+  <script src="scripts/parser.js?v=7"></script>
+  <script src="scripts/validator.js?v=7"></script>
+  <script src="scripts/insights.js?v=7"></script>
   
-  <script src="scripts/tabs/overview.js?v=6"></script>
-  <script src="scripts/tabs/ranks.js?v=6"></script>
-  <script src="scripts/tabs/quality.js?v=6"></script>
-  <script src="scripts/tabs/trends.js?v=6"></script>
-  <script src="scripts/tabs/directory.js?v=6"></script>
+  <script src="scripts/tabs/overview.js?v=7"></script>
+  <script src="scripts/tabs/ranks.js?v=7"></script>
+  <script src="scripts/tabs/quality.js?v=7"></script>
+  <script src="scripts/tabs/trends.js?v=7"></script>
+  <script src="scripts/tabs/directory.js?v=7"></script>
   
-  <script src="scripts/app.js?v=6"></script>
+  <script src="scripts/app.js?v=7"></script>
 </body>
 </html>

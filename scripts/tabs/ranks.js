@@ -1,6 +1,7 @@
 /**
- * Tab 2: Rank Deep-Dive — Stage 5
+ * Tab 2: Rank Deep-Dive — Stage 5 & Statutory Upgrade
  * Scatter plot (women share vs gap), Lollipop (top gaps), Insights
+ * Includes Option 2 Drill-Down: Clicking a rank in Lollipop/Scatter switches the Scatter plot to show bodies within that rank!
  */
 
 window.TabRanks = (function () {
@@ -8,6 +9,10 @@ window.TabRanks = (function () {
   let scatterChart = null;
   let lollipopChart = null;
   let hierarchyChart = null;
+
+  let selectedRank = null;
+  let lastRecords = [];
+  let lastIsFiltered = false;
 
   const COLORS = {
     men: '#14b8a6',   // Teal
@@ -20,56 +25,112 @@ window.TabRanks = (function () {
 
   function fmtShekel(v) { return '₪' + Math.round(v).toLocaleString('he-IL'); }
 
-  // ── Scatter Plot: Women Share vs Pay Gap ──────────────────────
+  function bindResetBtn() {
+    const btn = document.getElementById('btnResetScatter');
+    if (!btn) return;
+    
+    if (selectedRank) {
+      btn.classList.remove('hidden');
+      btn.classList.add('flex');
+    } else {
+      btn.classList.add('hidden');
+      btn.classList.remove('flex');
+    }
+
+    btn.onclick = () => {
+      selectedRank = null;
+      renderScatter(lastRecords, lastIsFiltered);
+      renderLollipop(lastRecords, lastIsFiltered);
+    };
+  }
+
+  // ── Scatter Plot: Women Share vs Pay Gap (All Ranks OR Drill-down to Bodies) ──
 
   function renderScatter(records, isFiltered) {
     const el = document.getElementById('chartScatter');
     if (!el) return;
 
-    const ranks = [...new Set(records.map(r => r.rank))].filter(Boolean);
+    bindResetBtn();
+
     const data = [];
 
-    const minHc = isFiltered ? window.DataEngine.PRIVACY_THRESHOLD : 50;
+    if (!selectedRank) {
+      // LEVEL 1: All Ranks
+      const ranks = [...new Set(records.map(r => r.rank))].filter(Boolean);
+      const minHc = isFiltered ? window.DataEngine.PRIVACY_THRESHOLD : 50;
 
-    ranks.forEach(rank => {
-      const sub = records.filter(r => r.rank === rank);
-      const hc = sub.reduce((s, r) => s + (r.menCount || 0) + (r.womenCount || 0), 0);
-      if (hc < minHc) return; // Dynamic noise filter
-      const wc = sub.reduce((s, r) => s + (r.womenCount || 0), 0);
-      const wsPct = (wc / hc * 100);
-      
-      const g = DataValidator.calculateAggregateGap(sub);
-      const mw = DataValidator.calculateWeightedAverageMenWage(sub);
-      const ww = DataValidator.calculateWeightedAverageWomenWage(sub);
+      ranks.forEach(rank => {
+        const sub = records.filter(r => r.rank === rank);
+        const hc = sub.reduce((s, r) => s + (r.menCount || 0) + (r.womenCount || 0), 0);
+        if (hc < minHc) return;
+        const wc = sub.reduce((s, r) => s + (r.womenCount || 0), 0);
+        const wsPct = (wc / hc * 100);
+        
+        const g = DataValidator.calculateAggregateGap(sub);
+        const mw = DataValidator.calculateWeightedAverageMenWage(sub);
+        const ww = DataValidator.calculateWeightedAverageWomenWage(sub);
 
-      if (g !== null) {
-        data.push({
-          value: [wsPct, g],
-          name: rank,
-          hc,
-          menWage: mw,
-          womenWage: ww,
-          symbolSize: Math.max(6, Math.min(40, Math.sqrt(hc) / 3)),
-        });
-      }
-    });
+        if (g !== null) {
+          data.push({
+            value: [wsPct, g],
+            name: rank,
+            hc,
+            menWage: mw,
+            womenWage: ww,
+            symbolSize: Math.max(6, Math.min(40, Math.sqrt(hc) / 3)),
+          });
+        }
+      });
+    } else {
+      // LEVEL 2: Bodies within selectedRank
+      const subRecords = records.filter(r => r.rank === selectedRank);
+      const bodies = [...new Set(subRecords.map(r => r.bodyName))].filter(Boolean);
+
+      bodies.forEach(body => {
+        const sub = subRecords.filter(r => r.bodyName === body);
+        const hc = sub.reduce((s, r) => s + (r.menCount || 0) + (r.womenCount || 0), 0);
+        if (hc < window.DataEngine.PRIVACY_THRESHOLD) return;
+        const wc = sub.reduce((s, r) => s + (r.womenCount || 0), 0);
+        const wsPct = (wc / hc * 100);
+        
+        const g = DataValidator.calculateAggregateGap(sub);
+        const mw = DataValidator.calculateWeightedAverageMenWage(sub);
+        const ww = DataValidator.calculateWeightedAverageWomenWage(sub);
+
+        if (g !== null) {
+          data.push({
+            value: [wsPct, g],
+            name: body,
+            hc,
+            menWage: mw,
+            womenWage: ww,
+            symbolSize: Math.max(8, Math.min(42, Math.sqrt(hc) * 2)),
+          });
+        }
+      });
+    }
 
     if (scatterChart) scatterChart.dispose();
     scatterChart = echarts.init(el);
 
+    const titleText = selectedRank
+      ? `גופים בדירוג "${selectedRank}" — שיעור נשים מול פער שכר`
+      : 'שיעור נשים מול פער שכר — לפי דירוג (לחץ על בועה או על דירוג לסריקה)';
+
     scatterChart.setOption({
       title: {
-        text: 'שיעור נשים מול פער שכר — לפי דירוג',
-        right: 0,
-        textStyle: { fontFamily: 'Heebo', fontSize: 14, fontWeight: 700, color: '#1e293b' }
+        text: titleText,
+        right: selectedRank ? 140 : 0, // Make room for reset button if active
+        textStyle: { fontFamily: 'Heebo', fontSize: 13, fontWeight: 700, color: '#1e293b' }
       },
       tooltip: {
         formatter: p => {
           const d = p.data;
-          return `<strong>${d.name}</strong><br>` +
+          const labelType = selectedRank ? 'גוף' : 'דירוג';
+          return `<strong>${d.name}</strong> (${labelType})<br>` +
             `שיעור נשים: ${d.value[0].toFixed(1)}%<br>` +
             `פער שכר: ${d.value[1].toFixed(1)}%<br>` +
-            `עובדים: ${d.hc.toLocaleString('he-IL')}<br>` +
+            `עובדים בדירוג: ${d.hc.toLocaleString('he-IL')}<br>` +
             `גברים: ${fmtShekel(d.menWage)} | נשים: ${fmtShekel(d.womenWage)}`;
         },
         textStyle: { fontFamily: 'Heebo' }
@@ -94,14 +155,6 @@ window.TabRanks = (function () {
         splitLine: { lineStyle: { color: COLORS.gridLine } },
         axisLine: { lineStyle: { color: COLORS.gridLine } },
       },
-      // Quadrant markings
-      markLine: {
-        silent: true,
-        data: [
-          { yAxis: 0, lineStyle: { color: '#e2e8f0', type: 'dashed' } },
-          { xAxis: 50, lineStyle: { color: '#e2e8f0', type: 'dashed' } },
-        ]
-      },
       series: [{
         type: 'scatter',
         data: data.map(d => ({
@@ -113,12 +166,12 @@ window.TabRanks = (function () {
             if (!p.data) return COLORS.gap;
             return p.data.value[1] > 0 ? COLORS.gap : COLORS.emerald;
           },
-          opacity: 0.7,
+          opacity: 0.75,
           borderColor: '#fff',
-          borderWidth: 1,
+          borderWidth: 1.5,
         },
         emphasis: {
-          itemStyle: { opacity: 1, shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.2)' }
+          itemStyle: { opacity: 1, shadowBlur: 14, shadowColor: 'rgba(0,0,0,0.3)' }
         },
         markLine: {
           silent: true,
@@ -130,6 +183,16 @@ window.TabRanks = (function () {
           label: { show: false }
         },
       }]
+    });
+
+    // Click handler for scatter points
+    scatterChart.off('click');
+    scatterChart.on('click', params => {
+      if (!selectedRank && params.data && params.data.name) {
+        selectedRank = params.data.name;
+        renderScatter(lastRecords, lastIsFiltered);
+        renderLollipop(lastRecords, lastIsFiltered);
+      }
     });
   }
 
@@ -161,15 +224,15 @@ window.TabRanks = (function () {
 
     lollipopChart.setOption({
       title: {
-        text: 'דירוגים מובילים בפער שכר',
+        text: 'דירוגים מובילים בפער שכר (לחץ על דירוג לחקירת גופים)',
         right: 0,
-        textStyle: { fontFamily: 'Heebo', fontSize: 14, fontWeight: 700, color: '#1e293b' }
+        textStyle: { fontFamily: 'Heebo', fontSize: 13, fontWeight: 700, color: '#1e293b' }
       },
       tooltip: {
-        formatter: p => `<strong>${data[p.dataIndex].rank}</strong><br>פער: ${p.value}%<br>עובדים: ${data[p.dataIndex].hc.toLocaleString('he-IL')}`,
+        formatter: p => `<strong>${data[p.dataIndex].rank}</strong><br>פער: ${p.value}%<br>עובדים: ${data[p.dataIndex].hc.toLocaleString('he-IL')}<br><span style="font-size:10px;color:#3b82f6;">👇 לחץ לצלילה לפי גופים</span>`,
         textStyle: { fontFamily: 'Heebo' }
       },
-      grid: { left: 120, right: 50, top: 50, bottom: 20 },
+      grid: { left: 130, right: 50, top: 50, bottom: 20 },
       xAxis: {
         type: 'value',
         axisLabel: { fontFamily: 'Heebo', fontSize: 11, color: COLORS.tick, formatter: v => v + '%' },
@@ -178,11 +241,15 @@ window.TabRanks = (function () {
       yAxis: {
         type: 'category',
         data: data.map(d => truncate(d.rank, 18)),
-        axisLabel: { fontFamily: 'Heebo', fontSize: 11, color: '#334155' },
+        axisLabel: {
+          fontFamily: 'Heebo', fontSize: 11,
+          color: p => (data.find(d => truncate(d.rank, 18) === p && d.rank === selectedRank)) ? '#1e3a8a' : '#334155',
+          fontWeight: p => (data.find(d => truncate(d.rank, 18) === p && d.rank === selectedRank)) ? 'bold' : 'normal',
+        },
         axisTick: { show: false },
       },
       series: [
-        // Line stems (pictorial bar for lollipop effect)
+        // Line stems
         {
           type: 'bar',
           data: data.map(d => d.gap),
@@ -198,9 +265,11 @@ window.TabRanks = (function () {
         {
           type: 'scatter',
           data: data.map((d, i) => [d.gap, i]),
-          symbolSize: 14,
+          symbolSize: p => (data[p.dataIndex].rank === selectedRank ? 20 : 14),
           itemStyle: {
-            color: p => data[p.dataIndex].gap > 0 ? COLORS.gap : COLORS.emerald,
+            color: p => data[p.dataIndex].rank === selectedRank
+              ? '#1e3a8a'
+              : (data[p.dataIndex].gap > 0 ? COLORS.gap : COLORS.emerald),
             borderColor: '#fff',
             borderWidth: 2,
           },
@@ -214,6 +283,21 @@ window.TabRanks = (function () {
           }
         }
       ]
+    });
+
+    // Click handler for lollipop chart
+    lollipopChart.off('click');
+    lollipopChart.on('click', params => {
+      const item = data[params.dataIndex];
+      if (item && item.rank) {
+        if (selectedRank === item.rank) {
+          selectedRank = null; // Toggle off if clicked twice
+        } else {
+          selectedRank = item.rank;
+        }
+        renderScatter(lastRecords, lastIsFiltered);
+        renderLollipop(lastRecords, lastIsFiltered);
+      }
     });
   }
 
@@ -229,14 +313,14 @@ window.TabRanks = (function () {
     const data = ranks.map(rank => {
       const sub = records.filter(r => r.rank === rank);
       const hc = sub.reduce((s, r) => s + (r.menCount || 0) + (r.womenCount || 0), 0);
-      if (hc < minHc) return null; // Require at least minHc people for statistical relevance in overall hierarchy
+      if (hc < minHc) return null;
       
       const overallWage = DataValidator.calculateOverallAverageWage(sub);
       return { rank, wage: Math.round(overallWage), hc };
     }).filter(Boolean)
       .sort((a, b) => b.wage - a.wage)
-      .slice(0, 20) // Top 20 ranks
-      .reverse(); // ECharts renders bottom-up
+      .slice(0, 20)
+      .reverse();
 
     if (hierarchyChart) hierarchyChart.dispose();
     hierarchyChart = echarts.init(el);
@@ -269,10 +353,10 @@ window.TabRanks = (function () {
           barWidth: '50%',
           itemStyle: {
             color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
-              { offset: 0, color: '#3b82f6' }, // blue-500
-              { offset: 1, color: '#93c5fd' }  // blue-300
+              { offset: 0, color: '#3b82f6' },
+              { offset: 1, color: '#93c5fd' }
             ]),
-            borderRadius: [0, 4, 4, 0] // rtl radius
+            borderRadius: [0, 4, 4, 0]
           },
           label: {
             show: true,
@@ -295,6 +379,9 @@ window.TabRanks = (function () {
   // ── Public ────────────────────────────────────────────────────
 
   function update(records, year, isFiltered = false) {
+    lastRecords = records;
+    lastIsFiltered = isFiltered;
+
     renderScatter(records, isFiltered);
     renderLollipop(records, isFiltered);
     renderRankHierarchy(records, isFiltered);
