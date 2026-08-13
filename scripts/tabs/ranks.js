@@ -13,6 +13,7 @@ window.TabRanks = (function () {
   let selectedRank = null;
   let lastRecords = [];
   let lastIsFiltered = false;
+  let currentRankLimit = 20;
 
   const COLORS = {
     men: '#14b8a6',   // Teal
@@ -322,11 +323,30 @@ window.TabRanks = (function () {
       if (hc < minHc) return null;
       
       const overallWage = DataValidator.calculateOverallAverageWage(sub);
-      return { rank, wage: Math.round(overallWage), hc };
+      const menWage = DataValidator.calculateWeightedAverageMenWage(sub);
+      const womenWage = DataValidator.calculateWeightedAverageWomenWage(sub);
+      const menCount = sub.reduce((s, r) => s + (r.menCount || 0), 0);
+      const womenCount = sub.reduce((s, r) => s + (r.womenCount || 0), 0);
+      const gap = menWage > 0 ? ((menWage - womenWage) / menWage * 100) : 0;
+
+      return {
+        rank,
+        wage: Math.round(overallWage),
+        menWage: Math.round(menWage),
+        womenWage: Math.round(womenWage),
+        menCount,
+        womenCount,
+        gap: gap.toFixed(1),
+        hc
+      };
     }).filter(Boolean)
       .sort((a, b) => b.wage - a.wage)
-      .slice(0, 20)
+      .slice(0, currentRankLimit)
       .reverse();
+
+    // Adjust chart height dynamically based on limit
+    const targetHeight = data.length > 25 ? Math.max(500, data.length * 28) : 500;
+    el.style.height = targetHeight + 'px';
 
     if (hierarchyChart) hierarchyChart.dispose();
     hierarchyChart = echarts.init(el);
@@ -337,7 +357,19 @@ window.TabRanks = (function () {
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        formatter: p => `<strong>${data[p[0].dataIndex].rank}</strong><br>שכר ממוצע: ${fmtShekel(p[0].value)}<br>עובדים: ${data[p[0].dataIndex].hc.toLocaleString('he-IL')}`,
+        formatter: p => {
+          const idx = p[0].dataIndex;
+          const d = data[idx];
+          if (!d) return '';
+          const gapColor = Number(d.gap) > 0 ? '#f43f5e' : '#10b981';
+          return `<div class="font-bold text-sm mb-1">${d.rank}</div>
+                  <div>שכר ממוצע כולל: <strong>${fmtShekel(d.wage)}</strong></div>
+                  <div class="mt-1 pt-1 border-t border-slate-200 text-xs space-y-0.5">
+                    <div class="text-teal-600 font-medium">גברים: <strong>${fmtShekel(d.menWage)}</strong> (${d.menCount.toLocaleString('he-IL')} עובדים)</div>
+                    <div class="text-rose-500 font-medium">נשים: <strong>${fmtShekel(d.womenWage)}</strong> (${d.womenCount.toLocaleString('he-IL')} עובדות)</div>
+                  </div>
+                  <div class="mt-1 text-xs">פער שכר: <strong style="color:${gapColor}">${d.gap}%</strong></div>`;
+        },
         textStyle: { fontFamily: 'Heebo' }
       },
       grid: { left: 140, right: 30, top: 20, bottom: 20 },
@@ -375,6 +407,20 @@ window.TabRanks = (function () {
     });
   }
 
+  function bindLimitButtons() {
+    document.querySelectorAll('.btnRankLimit').forEach(btn => {
+      btn.onclick = (e) => {
+        const limit = Number(e.currentTarget.getAttribute('data-limit'));
+        currentRankLimit = limit;
+        document.querySelectorAll('.btnRankLimit').forEach(b => {
+          b.className = 'btnRankLimit px-2.5 py-1 text-xs font-bold rounded transition-colors text-slate-600 hover:bg-white cursor-pointer';
+        });
+        e.currentTarget.className = 'btnRankLimit px-2.5 py-1 text-xs font-bold rounded transition-colors bg-white text-slate-900 shadow-sm cursor-pointer';
+        renderRankHierarchy(lastRecords, lastIsFiltered);
+      };
+    });
+  }
+
   // ── Insights ──────────────────────────────────────────────────
 
   function renderInsights(records, year) {
@@ -391,6 +437,7 @@ window.TabRanks = (function () {
     renderScatter(records, isFiltered);
     renderLollipop(records, isFiltered);
     renderRankHierarchy(records, isFiltered);
+    bindLimitButtons();
     renderInsights(records, year);
   }
 

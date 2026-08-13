@@ -285,10 +285,23 @@
 
       <!-- Rank Hierarchy (Inter-Rank Gaps) -->
       <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm mt-6">
-        <h3 class="text-lg font-bold text-slate-800 mb-1">היררכיית השכר: שכר ממוצע לפי דירוג</h3>
-        <p class="text-xs text-slate-500 mb-4">
-          הגרף מציג את השכר החודשי הממוצע הכללי (גברים ונשים יחד) עבור כל דירוג, וממחיש את היררכיית השכר הכלכלית בין המקצועות השונים.
-        </p>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800 mb-0.5">היררכיית השכר: שכר ממוצע לפי דירוג</h3>
+            <p class="text-xs text-slate-500">
+              הגרף מציג את השכר החודשי הממוצע הכללי (גברים ונשים יחד) עבור כל דירוג, וממחיש את היררכיית השכר הכלכלית בין המקצועות השונים.
+            </p>
+          </div>
+          
+          <!-- Rank Count Limit Selector -->
+          <div class="flex items-center gap-1.5 shrink-0 bg-slate-100 border border-slate-200 rounded-lg p-1">
+            <span class="text-xs font-semibold text-slate-600 px-1">כמות דירוגים:</span>
+            <button data-limit="10" class="btnRankLimit px-2.5 py-1 text-xs font-bold rounded transition-colors text-slate-600 hover:bg-white cursor-pointer">10</button>
+            <button data-limit="20" class="btnRankLimit px-2.5 py-1 text-xs font-bold rounded transition-colors bg-white text-slate-900 shadow-sm cursor-pointer">20</button>
+            <button data-limit="30" class="btnRankLimit px-2.5 py-1 text-xs font-bold rounded transition-colors text-slate-600 hover:bg-white cursor-pointer">30</button>
+            <button data-limit="1000" class="btnRankLimit px-2.5 py-1 text-xs font-bold rounded transition-colors text-slate-600 hover:bg-white cursor-pointer">הכל</button>
+          </div>
+        </div>
         <div id="chartRankHierarchy" style="height: 500px; width: 100%;"></div>
       </div>
     </div>
@@ -409,16 +422,16 @@
     </div>
   </div>
 
-  <script src="scripts/parser.js?v=11"></script>
-  <script src="scripts/validator.js?v=11"></script>
-  <script src="scripts/insights.js?v=11"></script>
+  <script src="scripts/parser.js?v=13"></script>
+  <script src="scripts/validator.js?v=13"></script>
+  <script src="scripts/insights.js?v=13"></script>
   
-  <script src="scripts/tabs/overview.js?v=11"></script>
-  <script src="scripts/tabs/ranks.js?v=11"></script>
-  <script src="scripts/tabs/quality.js?v=11"></script>
-  <script src="scripts/tabs/trends.js?v=11"></script>
-  <script src="scripts/tabs/directory.js?v=11"></script>
+  <script src="scripts/tabs/overview.js?v=13"></script>
+  <script src="scripts/tabs/ranks.js?v=13"></script>
+  <script src="scripts/tabs/quality.js?v=13"></script>
+  <script src="scripts/tabs/trends.js?v=13"></script>
+  <script src="scripts/tabs/directory.js?v=13"></script>
   
-  <script src="scripts/app.js?v=11"></script>
+  <script src="scripts/app.js?v=13"></script>
 </body>
 </html>
