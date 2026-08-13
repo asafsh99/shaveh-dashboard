@@ -349,11 +349,17 @@ window.TabOverview = (function () {
 
     bodies.forEach(body => {
       const sub = records.filter(r => r.bodyName === body);
-      const hc = sub.reduce((s, r) => s + (r.menCount || 0) + (r.womenCount || 0), 0);
+      const menCount = sub.reduce((s, r) => s + (r.menCount || 0), 0);
+      const womenCount = sub.reduce((s, r) => s + (r.womenCount || 0), 0);
+      const hc = menCount + womenCount;
       if (hc < DataEngine.PRIVACY_THRESHOLD) return;
       const gap = DataValidator.calculateAggregateGap(sub);
+      const avgWage = DataValidator.calculateOverallAverageWage(sub);
+      const menWage = DataValidator.calculateWeightedAverageMenWage(sub);
+      const womenWage = DataValidator.calculateWeightedAverageWomenWage(sub);
+
       if (gap !== null) {
-        gaps.push({ body, gap: gap, hc });
+        gaps.push({ body, gap, hc, menCount, womenCount, avgWage, menWage, womenWage });
       }
     });
 
@@ -454,16 +460,29 @@ window.TabOverview = (function () {
       
       bucket.bodies.forEach(b => {
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50 transition-colors cursor-pointer";
+        tr.className = "hover:bg-slate-50 transition-colors cursor-pointer group";
         tr.onclick = () => {
           closeDistModal();
           App.setFilterAndRoute({ bodyName: b.body }, 'overview');
         };
         
+        const gapColor = b.gap > 0 ? 'text-rose-500' : 'text-emerald-500';
+
         tr.innerHTML = `
-          <td class="px-6 py-3 font-medium text-slate-800">${b.body}</td>
-          <td class="px-6 py-3 font-bold ${b.gap > 0 ? 'text-rose-500' : 'text-emerald-500'}" dir="ltr">${b.gap.toFixed(1)}%</td>
-          <td class="px-6 py-3 text-slate-500">${b.hc.toLocaleString('he-IL')}</td>
+          <td class="px-4 py-3 font-medium text-slate-800">
+            <div>${b.body}</div>
+            <div class="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">לחץ לסינון הגוף</div>
+          </td>
+          <td class="px-4 py-3 font-bold text-center ${gapColor}" dir="ltr">${b.gap.toFixed(1)}%</td>
+          <td class="px-4 py-3 text-center text-slate-600 text-xs">
+            <span class="font-bold text-teal-600">${(b.menCount || 0).toLocaleString('he-IL')}</span>
+            <span class="text-[10px] text-slate-400"> (₪${Math.round(b.menWage || 0).toLocaleString('he-IL')})</span>
+          </td>
+          <td class="px-4 py-3 text-center text-slate-600 text-xs">
+            <span class="font-bold text-rose-500">${(b.womenCount || 0).toLocaleString('he-IL')}</span>
+            <span class="text-[10px] text-slate-400"> (₪${Math.round(b.womenWage || 0).toLocaleString('he-IL')})</span>
+          </td>
+          <td class="px-4 py-3 font-bold text-center text-slate-800">${b.avgWage ? '₪' + Math.round(b.avgWage).toLocaleString('he-IL') : '—'}</td>
         `;
         tbody.appendChild(tr);
       });
