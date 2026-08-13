@@ -169,6 +169,19 @@ window.App = (function() {
     state.filterOptions.systems = extractUnique(records, 'system');
     state.filterOptions.bodies = extractUnique(records, 'bodyName');
     state.filterOptions.ranks = extractUnique(records, 'rank');
+
+    // Dynamic header & document title update based on loaded years range
+    const yrs = state.filterOptions.years;
+    if (yrs.length > 0) {
+      const minY = Math.min(...yrs);
+      const maxY = Math.max(...yrs);
+      const yearText = `${minY}–${maxY}`;
+      
+      document.title = `פערי שכר מגדריים במגזר הציבורי | ${yearText}`;
+      
+      const badge = document.getElementById('headerYearBadge');
+      if (badge) badge.textContent = `${yearText}`;
+    }
   }
 
   function getCascadedRecords(upToField) {
