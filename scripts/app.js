@@ -85,7 +85,7 @@ window.App = (function() {
 
   function handleRouteChange() {
     let hash = window.location.hash.replace('#', '') || 'overview';
-    const validTabs = ['overview', 'ranks', 'quality', 'trends'];
+    const validTabs = ['overview', 'ranks', 'quality', 'trends', 'directory'];
     
     if (!validTabs.includes(hash)) {
       hash = 'overview';
@@ -239,6 +239,22 @@ window.App = (function() {
     });
   }
 
+  function sortDropdownList(list) {
+    const labels = Array.from(list.children).filter(child => child.tagName && child.tagName.toLowerCase() === 'label');
+    if (labels.length === 0) return;
+    
+    const checked = labels.filter(label => label.querySelector('input') && label.querySelector('input').checked);
+    const unchecked = labels.filter(label => label.querySelector('input') && !label.querySelector('input').checked);
+    
+    // Maintain alphabetical order using Hebrew locale
+    const sortAlpha = (a, b) => a.textContent.trim().localeCompare(b.textContent.trim(), 'he-IL');
+    checked.sort(sortAlpha);
+    unchecked.sort(sortAlpha);
+    
+    checked.forEach(l => list.appendChild(l));
+    unchecked.forEach(l => list.appendChild(l));
+  }
+
   function renderCheckboxDropdown(fieldId, key, options, placeholder, currentValues) {
     const listEl = document.getElementById(`listDropdown-${fieldId}`);
     const labelEl = document.getElementById(`labelDropdown-${fieldId}`);
@@ -292,6 +308,7 @@ window.App = (function() {
           if (fieldId === 'system') { state.filters.bodyName = []; state.filters.rank = []; }
           if (fieldId === 'body') { state.filters.rank = []; }
           
+          sortDropdownList(listEl);
           onFilterChange();
         });
 
@@ -360,8 +377,14 @@ window.App = (function() {
       case 'trends':
         // Trends ignores the year filter, so we pass it a special set filtered by system only
         let tRecords = state.data.overview;
-        if (state.filters.system) tRecords = tRecords.filter(r => r.system === state.filters.system);
+        if (state.filters.system && state.filters.system.length > 0) {
+          tRecords = tRecords.filter(r => state.filters.system.includes(r.system));
+        }
         if (window.TabTrends) TabTrends.update(tRecords);
+        break;
+
+      case 'directory':
+        if (window.TabDirectory) TabDirectory.update(fOverview);
         break;
     }
   }
@@ -399,6 +422,10 @@ window.App = (function() {
           menu.classList.remove('hidden');
           search.value = '';
           search.focus();
+          
+          // Reorder list: checked items at the top, alphabetically
+          sortDropdownList(list);
+          
           Array.from(list.children).forEach(child => child.classList.remove('hidden'));
         }
       });

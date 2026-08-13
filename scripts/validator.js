@@ -90,6 +90,28 @@ window.DataValidator = (function() {
     return validCountSum > 0 ? (weightedWageSum / validCountSum) : 0;
   }
 
+  function calculateWeightedAverageMenEmployerCost(records) {
+    let sum = 0, count = 0;
+    records.forEach(r => {
+      if (r.avgMenEmployerCost !== null && r.menCount !== null && r.menCount > 0) {
+        sum += r.avgMenEmployerCost * r.menCount;
+        count += r.menCount;
+      }
+    });
+    return count > 0 ? (sum / count) : 0;
+  }
+
+  function calculateWeightedAverageWomenEmployerCost(records) {
+    let sum = 0, count = 0;
+    records.forEach(r => {
+      if (r.avgWomenEmployerCost !== null && r.womenCount !== null && r.womenCount > 0) {
+        sum += r.avgWomenEmployerCost * r.womenCount;
+        count += r.womenCount;
+      }
+    });
+    return count > 0 ? (sum / count) : 0;
+  }
+
   /**
    * Calculates Overall Gender Pay Gap (%)
    * Formula: ((AvgMenWage - AvgWomenWage) / AvgMenWage) * 100
@@ -127,6 +149,11 @@ window.DataValidator = (function() {
     const avgWomenWage = calculateWeightedAverageWomenWage(records);
     const payGap = calculateGenderPayGap(avgMenWage, avgWomenWage);
 
+    const avgMenEmployerCost = calculateWeightedAverageMenEmployerCost(records);
+    const avgWomenEmployerCost = calculateWeightedAverageWomenEmployerCost(records);
+    const employerCostGap = calculateGenderPayGap(avgMenEmployerCost, avgWomenEmployerCost);
+    const overallEmployerCost = (avgMenEmployerCost * counts.totalMen + avgWomenEmployerCost * counts.totalWomen) / (counts.totalEmployees || 1);
+
     return {
       totalRecords: records.length,
       totalMen: counts.totalMen,
@@ -134,7 +161,11 @@ window.DataValidator = (function() {
       totalEmployees: counts.totalEmployees,
       avgMenWage: Math.round(avgMenWage * 100) / 100,
       avgWomenWage: Math.round(avgWomenWage * 100) / 100,
-      genderPayGapPercent: payGap !== null ? Math.round(payGap * 100) / 100 : null
+      genderPayGapPercent: payGap !== null ? Math.round(payGap * 100) / 100 : null,
+      avgMenEmployerCost: Math.round(avgMenEmployerCost * 100) / 100,
+      avgWomenEmployerCost: Math.round(avgWomenEmployerCost * 100) / 100,
+      overallEmployerCost: Math.round(overallEmployerCost * 100) / 100,
+      employerCostGapPercent: employerCostGap !== null ? Math.round(employerCostGap * 100) / 100 : null,
     };
   }
 

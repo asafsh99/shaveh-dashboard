@@ -7,6 +7,7 @@ window.TabOverview = (function () {
 
   let butterflyChart = null;
   let heatmapChart = null;
+  let salaryTiersChart = null;
   let initialized = false;
 
   const COLORS = {
@@ -55,6 +56,15 @@ window.TabOverview = (function () {
     // Update share bar
     const shareBar = document.getElementById('kpiShareBar');
     if (shareBar) shareBar.style.width = ws + '%';
+
+    // Employer Cost KPIs
+    const empCostEl = document.getElementById('kpiEmployerCost');
+    if (empCostEl) empCostEl.textContent = fmtShekel(v.overallEmployerCost);
+
+    const empCostGapEl = document.getElementById('kpiEmployerCostGap');
+    if (empCostGapEl) {
+      empCostGapEl.textContent = v.employerCostGapPercent !== null ? v.employerCostGapPercent.toFixed(2) + '%' : '—';
+    }
   }
 
   // ── Butterfly Chart ───────────────────────────────────────────
@@ -497,6 +507,85 @@ window.TabOverview = (function () {
     });
   });
 
+  // ── Salary Tiers Stacked Chart ───────────────────────────────
+
+  function renderSalaryTiersChart(records) {
+    const el = document.getElementById('chartSalaryTiers');
+    if (!el) return;
+
+    const systems = [...new Set(records.map(r => r.system))].filter(Boolean);
+    const data = systems.map(sys => {
+      const sub = records.filter(r => r.system === sys);
+      const gross = DataValidator.calculateOverallAverageWage(sub);
+      let taxSum = 0, costSum = 0, count = 0;
+      sub.forEach(r => {
+        const mc = r.menCount || 0, wc = r.womenCount || 0;
+        const totalC = mc + wc;
+        if (totalC > 0 && r.avgTotalTaxGross) { taxSum += r.avgTotalTaxGross * totalC; }
+        if (totalC > 0 && r.avgTotalEmployerCost) { costSum += r.avgTotalEmployerCost * totalC; }
+        if (totalC > 0 && r.avgTotalTaxGross && r.avgTotalEmployerCost) { count += totalC; }
+      });
+      const taxGross = count > 0 ? taxSum / count : gross;
+      const employerCost = count > 0 ? costSum / count : taxGross;
+
+      return {
+        system: sys,
+        gross: Math.round(gross),
+        taxAdd: Math.max(0, Math.round(taxGross - gross)),
+        costAdd: Math.max(0, Math.round(employerCost - taxGross)),
+        totalCost: Math.round(employerCost)
+      };
+    }).filter(d => d.gross > 0);
+
+    if (salaryTiersChart) salaryTiersChart.dispose();
+    salaryTiersChart = echarts.init(el);
+
+    salaryTiersChart.setOption({
+      title: {
+        text: 'מבנה השכר לפי מערכת — שלוש שכבות (שוטף, מס, עלות מעסיק)',
+        right: 0,
+        textStyle: { fontFamily: 'Heebo', fontSize: 14, fontWeight: 700, color: '#1e293b' }
+      },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: params => {
+          const sys = params[0].name;
+          const d = data.find(x => x.system === sys);
+          if (!d) return sys;
+          return `<strong>${sys}</strong><br>` +
+                 `ברוטו שוטף: ${fmtShekel(d.gross)}<br>` +
+                 `תוספת ברוטו למס: ${fmtShekel(d.taxAdd)}<br>` +
+                 `הפרשות מעסיק: ${fmtShekel(d.costAdd)}<br>` +
+                 `<strong>סה"כ עלות העסקה: ${fmtShekel(d.totalCost)}</strong>`;
+        },
+        textStyle: { fontFamily: 'Heebo' }
+      },
+      legend: {
+        data: ['ברוטו שוטף', 'תוספת למס', 'הפרשות מעסיק'],
+        right: 0, top: 25,
+        textStyle: { fontFamily: 'Heebo', fontSize: 11 }
+      },
+      grid: { left: 80, right: 30, top: 60, bottom: 40 },
+      xAxis: {
+        type: 'category',
+        data: data.map(d => d.system),
+        axisLabel: { fontFamily: 'Heebo', fontSize: 11, color: '#334155', rotate: 15 },
+        axisTick: { show: false }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: { formatter: v => fmtShekel(v), fontFamily: 'Heebo', fontSize: 11, color: COLORS.tick },
+        splitLine: { lineStyle: { color: COLORS.gridLine } }
+      },
+      series: [
+        { name: 'ברוטו שוטף', type: 'bar', stack: 'total', data: data.map(d => d.gross), itemStyle: { color: '#1e3a8a' } },
+        { name: 'תוספת למס', type: 'bar', stack: 'total', data: data.map(d => d.taxAdd), itemStyle: { color: '#d97706' } },
+        { name: 'הפרשות מעסיק', type: 'bar', stack: 'total', data: data.map(d => d.costAdd), itemStyle: { color: '#14b8a6' } }
+      ]
+    });
+  }
+
   // ── Public ────────────────────────────────────────────────────
 
   function update(records, year) {
@@ -504,6 +593,7 @@ window.TabOverview = (function () {
     renderButterflyChart(records);
     renderHeatmap(records);
     renderDistribution(records);
+    renderSalaryTiersChart(records);
     renderInsights(records, year);
   }
 
@@ -511,6 +601,7 @@ window.TabOverview = (function () {
     if (butterflyChart) butterflyChart.resize();
     if (heatmapChart) heatmapChart.resize();
     if (distributionChart) distributionChart.resize();
+    if (salaryTiersChart) salaryTiersChart.resize();
   }
 
   return { update, resize };
