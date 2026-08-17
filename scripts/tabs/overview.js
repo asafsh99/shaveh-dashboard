@@ -35,10 +35,10 @@ window.TabOverview = (function () {
     }
 
     document.getElementById('kpiMenWage').textContent = fmtShekel(v.avgMenWage);
-    document.getElementById('kpiMenCount').textContent = v.totalMen.toLocaleString('he-IL', { maximumFractionDigits: (v.totalMen % 1 === 0 ? 0 : 1) }) + ' עובדים';
+    document.getElementById('kpiMenCount').textContent = Math.round(v.totalMen).toLocaleString('he-IL') + ' עובדים';
 
     document.getElementById('kpiWomenWage').textContent = fmtShekel(v.avgWomenWage);
-    document.getElementById('kpiWomenCount').textContent = v.totalWomen.toLocaleString('he-IL', { maximumFractionDigits: (v.totalWomen % 1 === 0 ? 0 : 1) }) + ' עובדות';
+    document.getElementById('kpiWomenCount').textContent = Math.round(v.totalWomen).toLocaleString('he-IL') + ' עובדות';
 
     // Calculate proportions for the wage bars
     const maxWage = Math.max(v.avgMenWage, v.avgWomenWage, 1);
