@@ -605,6 +605,373 @@ window.TabOverview = (function () {
     });
   }
 
+  // ── Tableau-style Body Breakdown (Dual ECharts) ───────────────
+
+  let bodyBreakdownChart = null;
+  let breakdownType = 'bodyName'; // 'system' | 'bodyName' | 'rank' | 'subSystem'
+  let breakdownSort = 'hc';       // 'hc' | 'gap' | 'womenWage' | 'menWage'
+  let breakdownTopN = 15;
+  let _lastBreakdownRecords = [];
+
+  function _aggregateBreakdown(records, groupKey) {
+    const T = (window.DataEngine && window.DataEngine.PRIVACY_THRESHOLD) || 5;
+    const map = {};
+
+    records.forEach(r => {
+      const key = r[groupKey];
+      if (!key) return;
+      if (!map[key]) map[key] = {
+        key,
+        menCount: 0, womenCount: 0,
+        menWageSum: 0, womenWageSum: 0,
+        menWageCount: 0, womenWageCount: 0
+      };
+      const m = map[key];
+      const mc = r.menCount || 0, wc = r.womenCount || 0;
+      m.menCount += mc;
+      m.womenCount += wc;
+      if (r.avgMenWage && mc > 0)   { m.menWageSum += r.avgMenWage * mc; m.menWageCount += mc; }
+      if (r.avgWomenWage && wc > 0) { m.womenWageSum += r.avgWomenWage * wc; m.womenWageCount += wc; }
+    });
+
+    return Object.values(map).map(m => {
+      const hc = m.menCount + m.womenCount;
+      if (hc < T) return null;
+      const menPct  = hc > 0 ? (m.menCount   / hc) * 100 : 0;
+      const womenPct = hc > 0 ? (m.womenCount / hc) * 100 : 0;
+      const menWage   = m.menWageCount   > 0 ? m.menWageSum   / m.menWageCount   : null;
+      const womenWage = m.womenWageCount > 0 ? m.womenWageSum / m.womenWageCount : null;
+      const gap = (menWage != null && womenWage != null && menWage > 0)
+        ? ((menWage - womenWage) / menWage) * 100
+        : null;
+      return { key: m.key, hc, menPct, womenPct, menWage, womenWage, gap };
+    }).filter(Boolean);
+  }
+
+  function renderBodyBreakdown(records) {
+    _lastBreakdownRecords = records;
+    _drawBodyBreakdownChart();
+    _bindBodyBreakdownControls();
+  }
+
+  function _drawBodyBreakdownChart() {
+    const el = document.getElementById('chartBodyBreakdown');
+    if (!el) return;
+
+    const allData = _aggregateBreakdown(_lastBreakdownRecords, breakdownType);
+
+    // Apply Sorting
+    let sorted = [...allData];
+    if (breakdownSort === 'gap') {
+      sorted = sorted.filter(d => d.gap !== null).sort((a, b) => b.gap - a.gap);
+    } else if (breakdownSort === 'womenWage') {
+      sorted = sorted.filter(d => d.womenWage != null).sort((a, b) => b.womenWage - a.womenWage);
+    } else if (breakdownSort === 'menWage') {
+      sorted = sorted.filter(d => d.menWage != null).sort((a, b) => b.menWage - a.menWage);
+    } else {
+      sorted = sorted.sort((a, b) => b.hc - a.hc);
+    }
+
+    const top = sorted.slice(0, breakdownTopN);
+
+    // Update dynamic subtitle
+    const subEl = document.getElementById('breakdownSubTitle');
+    if (subEl) {
+      const typeMap = { bodyName: 'הגופים', system: 'המערכות', rank: 'הדירוגים', subSystem: 'תת-המערכות' };
+      const sortMap = { hc: 'מספר העובדים הגבוה ביותר', gap: 'פער השכר הגבוה ביותר', womenWage: 'שכר הנשים הגבוה ביותר', menWage: 'שכר הגברים הגבוה ביותר' };
+      subEl.textContent = `רשימת ${top.length} ${typeMap[breakdownType] || 'הגופים'} בעלי ${sortMap[breakdownSort] || 'מספר העובדים הגבוה ביותר'} — לחץ על שורה לצלילה`;
+    }
+
+    // Reverse for bottom-to-top display (echarts inverse)
+    const names    = top.map(d => d.key).reverse();
+    const menPcts  = top.map(d => +d.menPct.toFixed(1)).reverse();
+    const womenPcts = top.map(d => +d.womenPct.toFixed(1)).reverse();
+    const womenWages = top.map(d => d.womenWage ? -(Math.round(d.womenWage)) : null).reverse();
+    const menWages   = top.map(d => d.menWage   ?  Math.round(d.menWage)    : null).reverse();
+
+    // Dynamic height: min 420, 36px per bar
+    const chartH = Math.max(420, top.length * 36 + 130);
+    el.style.height = chartH + 'px';
+
+    if (bodyBreakdownChart) bodyBreakdownChart.dispose();
+    bodyBreakdownChart = echarts.init(el);
+
+    // Truncate long labels
+    const trunc = (s, max) => s && s.length > max ? s.substring(0, max - 1) + '…' : (s || '');
+    const truncNames = names.map(n => trunc(n, 24));
+
+    // Max absolute salary for symmetric x-axis on right chart
+    const maxSalary = Math.max(
+      ...top.map(d => Math.max(d.menWage || 0, d.womenWage || 0)), 1
+    );
+    const salaryAxisMax = Math.ceil(maxSalary / 5000) * 5000;
+
+    const fmtK = v => {
+      const abs = Math.abs(v);
+      return abs >= 1000 ? (abs / 1000).toFixed(1) + 'K' : abs.toString();
+    };
+
+    bodyBreakdownChart.setOption({
+      animation: true,
+      animationDuration: 500,
+      backgroundColor: 'transparent',
+      title: [
+        {
+          text: 'התפלגות העובדים לפי מגדר',
+          left: '25%',
+          textAlign: 'center',
+          top: 8,
+          textStyle: { fontFamily: 'Heebo', fontSize: 14, fontWeight: 700, color: '#1e293b' }
+        },
+        {
+          text: 'שכר ברוטו שוטף והפרשים נשים מול גברים',
+          left: '75%',
+          textAlign: 'center',
+          top: 8,
+          textStyle: { fontFamily: 'Heebo', fontSize: 14, fontWeight: 700, color: '#1e293b' }
+        }
+      ],
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: params => {
+          const nameIndex = names.indexOf(params[0]?.name);
+          const d = top[top.length - 1 - nameIndex] || top.find(x => trunc(x.key, 24) === params[0]?.name);
+          if (!d) return params[0]?.name || '';
+          const gap = d.menWage && d.womenWage ? (((d.menWage - d.womenWage) / d.menWage) * 100).toFixed(1) : '—';
+          return `<div style="font-family:Heebo,sans-serif; text-align:right;" dir="rtl">` +
+            `<strong style="font-size:13px; color:#0f172a;">${d.key}</strong><br>` +
+            `<span style="color:#64748b;font-size:11px">סה"כ: ${d.hc.toLocaleString('he-IL')} עובדים</span><br><br>` +
+            `<span style="color:#14b8a6">■</span> <strong>גברים:</strong> ${d.menPct.toFixed(0)}%` +
+            (d.menWage ? ` (₪${Math.round(d.menWage).toLocaleString('he-IL')})` : '') + `<br>` +
+            `<span style="color:#f43f5e">■</span> <strong>נשים:</strong> ${d.womenPct.toFixed(0)}%` +
+            (d.womenWage ? ` (₪${Math.round(d.womenWage).toLocaleString('he-IL')})` : '') + `<br><br>` +
+            `<span style="color:#334155;">פער שכר מגדרי: <strong>${gap}%</strong></span>` +
+            `</div>`;
+        },
+        textStyle: { fontFamily: 'Heebo' }
+      },
+      legend: {
+        data: ['נשים', 'גברים', 'שכר נשים', 'שכר גברים'],
+        bottom: 5,
+        left: 'center',
+        textStyle: { fontFamily: 'Heebo', fontSize: 11, color: '#475569' },
+        itemWidth: 12, itemHeight: 10
+      },
+      grid: [
+        { // Left: gender distribution stacked bars
+          left: 170,
+          right: '52%',
+          top: 48,
+          bottom: 45
+        },
+        { // Right: salary diverging bars
+          left: '51%',
+          right: 35,
+          top: 48,
+          bottom: 45
+        }
+      ],
+      xAxis: [
+        { // Left: 0–100% (gender)
+          type: 'value',
+          gridIndex: 0,
+          min: 0,
+          max: 100,
+          axisLabel: { formatter: v => v + '%', fontFamily: 'Heebo', fontSize: 10, color: '#94a3b8' },
+          splitLine: { lineStyle: { color: 'rgba(148,163,184,0.15)' } },
+          axisTick: { show: false }
+        },
+        { // Right: diverging salary
+          type: 'value',
+          gridIndex: 1,
+          min: -salaryAxisMax,
+          max: salaryAxisMax,
+          axisLabel: {
+            formatter: v => '₪' + fmtK(v),
+            fontFamily: 'Heebo', fontSize: 10, color: '#94a3b8'
+          },
+          splitLine: { lineStyle: { color: 'rgba(148,163,184,0.15)' } },
+          axisTick: { show: false }
+        }
+      ],
+      yAxis: [
+        { // Left Y-axis: category names
+          type: 'category',
+          gridIndex: 0,
+          data: truncNames,
+          axisLabel: {
+            fontFamily: 'Heebo', fontSize: 11, color: '#334155',
+            width: 150, overflow: 'truncate', align: 'right'
+          },
+          axisTick: { show: false },
+          axisLine: { lineStyle: { color: 'rgba(148,163,184,0.25)' } }
+        },
+        { // Right Y-axis: no labels (shared visual Y)
+          type: 'category',
+          gridIndex: 1,
+          data: truncNames,
+          axisLabel: { show: false },
+          axisTick: { show: false },
+          axisLine: { show: false },
+          splitLine: { show: false }
+        }
+      ],
+      series: [
+        {
+          // LEFT CHART — Women %
+          name: 'נשים',
+          type: 'bar',
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          stack: 'gender',
+          data: womenPcts,
+          itemStyle: { color: '#be185d', borderRadius: [0, 0, 0, 0] },
+          label: {
+            show: true,
+            position: 'inside',
+            formatter: p => p.value > 8 ? p.value.toFixed(0) + '%' : '',
+            fontFamily: 'Heebo', fontSize: 10, color: '#fff', fontWeight: 700
+          },
+          barMaxWidth: 26,
+          emphasis: { focus: 'series' }
+        },
+        {
+          // LEFT CHART — Men %
+          name: 'גברים',
+          type: 'bar',
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          stack: 'gender',
+          data: menPcts,
+          itemStyle: { color: '#0284c7', borderRadius: [0, 0, 0, 0] },
+          label: {
+            show: true,
+            position: 'inside',
+            formatter: p => p.value > 8 ? p.value.toFixed(0) + '%' : '',
+            fontFamily: 'Heebo', fontSize: 10, color: '#fff', fontWeight: 700
+          },
+          barMaxWidth: 26,
+          emphasis: { focus: 'series' }
+        },
+        {
+          // RIGHT CHART — Women wage (negative → left)
+          name: 'שכר נשים',
+          type: 'bar',
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          stack: 'salary',
+          data: womenWages,
+          itemStyle: { color: '#f472b6', borderRadius: [3, 0, 0, 3] },
+          label: {
+            show: true,
+            position: 'left',
+            formatter: p => p.value !== null ? '₪' + fmtK(p.value) : '',
+            fontFamily: 'Heebo', fontSize: 10, color: '#9d174d', fontWeight: 600
+          },
+          barMaxWidth: 24,
+          emphasis: { focus: 'series', itemStyle: { color: '#db2777' } }
+        },
+        {
+          // RIGHT CHART — Men wage (positive → right)
+          name: 'שכר גברים',
+          type: 'bar',
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          stack: 'salary',
+          data: menWages,
+          itemStyle: { color: '#38bdf8', borderRadius: [0, 3, 3, 0] },
+          label: {
+            show: true,
+            position: 'right',
+            formatter: p => p.value !== null ? '₪' + fmtK(p.value) : '',
+            fontFamily: 'Heebo', fontSize: 10, color: '#0369a1', fontWeight: 600
+          },
+          barMaxWidth: 24,
+          emphasis: { focus: 'series', itemStyle: { color: '#0284c7' } }
+        }
+      ]
+    });
+
+    // Drill-down click
+    bodyBreakdownChart.off('click');
+    bodyBreakdownChart.on('click', params => {
+      if (!params.name) return;
+      const originalName = names[truncNames.indexOf(params.name)] || params.name;
+      if (breakdownType === 'bodyName') {
+        App.setFilterAndRoute({ bodyName: originalName }, 'ranks');
+      } else if (breakdownType === 'system') {
+        App.setFilterAndRoute({ system: originalName }, 'ranks');
+      } else if (breakdownType === 'rank') {
+        App.setFilterAndRoute({ rank: originalName }, 'ranks');
+      } else {
+        App.setFilterAndRoute({ subSystem: originalName }, 'ranks');
+      }
+    });
+  }
+
+  function _bindBodyBreakdownControls() {
+    // Radio buttons (Type)
+    document.querySelectorAll('.bodyBreakdownRadio').forEach(radio => {
+      radio.onchange = () => {
+        breakdownType = radio.value;
+        _drawBodyBreakdownChart();
+      };
+    });
+
+    // Sort buttons
+    const sBtns = document.querySelectorAll('.btnBreakdownSort');
+    sBtns.forEach(btn => {
+      const fresh = btn.cloneNode(true);
+      btn.parentNode.replaceChild(fresh, btn);
+    });
+    document.querySelectorAll('.btnBreakdownSort').forEach(btn => {
+      const isActive = btn.dataset.sort === breakdownSort;
+      btn.classList.toggle('bg-white', isActive);
+      btn.classList.toggle('text-slate-900', isActive);
+      btn.classList.toggle('shadow-sm', isActive);
+      btn.classList.toggle('text-slate-600', !isActive);
+
+      btn.addEventListener('click', () => {
+        breakdownSort = btn.dataset.sort;
+        document.querySelectorAll('.btnBreakdownSort').forEach(b => {
+          const a = b.dataset.sort === breakdownSort;
+          b.classList.toggle('bg-white', a);
+          b.classList.toggle('text-slate-900', a);
+          b.classList.toggle('shadow-sm', a);
+          b.classList.toggle('text-slate-600', !a);
+        });
+        _drawBodyBreakdownChart();
+      });
+    });
+
+    // Top-N buttons
+    const nBtns = document.querySelectorAll('.btnBreakdownN');
+    nBtns.forEach(btn => {
+      const fresh = btn.cloneNode(true);
+      btn.parentNode.replaceChild(fresh, btn);
+    });
+    document.querySelectorAll('.btnBreakdownN').forEach(btn => {
+      const isActive = parseInt(btn.dataset.n) === breakdownTopN;
+      btn.classList.toggle('bg-white', isActive);
+      btn.classList.toggle('text-slate-900', isActive);
+      btn.classList.toggle('shadow-sm', isActive);
+      btn.classList.toggle('text-slate-600', !isActive);
+
+      btn.addEventListener('click', () => {
+        breakdownTopN = parseInt(btn.dataset.n);
+        document.querySelectorAll('.btnBreakdownN').forEach(b => {
+          const a = parseInt(b.dataset.n) === breakdownTopN;
+          b.classList.toggle('bg-white', a);
+          b.classList.toggle('text-slate-900', a);
+          b.classList.toggle('shadow-sm', a);
+          b.classList.toggle('text-slate-600', !a);
+        });
+        _drawBodyBreakdownChart();
+      });
+    });
+  }
+
   // ── Public ────────────────────────────────────────────────────
 
   function update(records, year) {
@@ -613,6 +980,7 @@ window.TabOverview = (function () {
     renderHeatmap(records);
     renderDistribution(records);
     renderSalaryTiersChart(records);
+    renderBodyBreakdown(records);
     renderInsights(records, year);
   }
 
@@ -621,7 +989,9 @@ window.TabOverview = (function () {
     if (heatmapChart) heatmapChart.resize();
     if (distributionChart) distributionChart.resize();
     if (salaryTiersChart) salaryTiersChart.resize();
+    if (bodyBreakdownChart) bodyBreakdownChart.resize();
   }
 
   return { update, resize };
 })();
+
