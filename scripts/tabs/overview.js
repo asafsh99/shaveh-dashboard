@@ -609,7 +609,7 @@ window.TabOverview = (function () {
 
   let bodyBreakdownChart = null;
   let breakdownType = 'bodyName'; // 'system' | 'bodyName' | 'rank' | 'subSystem'
-  let breakdownSort = 'hc';       // 'hc' | 'gap' | 'womenWage' | 'menWage'
+  let breakdownSort = 'hc';       // 'hc' | 'gap' | 'overallWage' | 'womenWage' | 'menWage'
   let breakdownSortDir = 'desc';  // 'desc' | 'asc'
   let breakdownTopN = 15;
   let _lastBreakdownRecords = [];
@@ -642,10 +642,24 @@ window.TabOverview = (function () {
       const womenPct = hc > 0 ? (m.womenCount / hc) * 100 : 0;
       const menWage   = m.menWageCount   > 0 ? m.menWageSum   / m.menWageCount   : null;
       const womenWage = m.womenWageCount > 0 ? m.womenWageSum / m.womenWageCount : null;
+      const totalWageSum = m.menWageSum + m.womenWageSum;
+      const totalWageCount = m.menWageCount + m.womenWageCount;
+      const overallWage = totalWageCount > 0 ? totalWageSum / totalWageCount : null;
       const gap = (menWage != null && womenWage != null && menWage > 0)
         ? ((menWage - womenWage) / menWage) * 100
         : null;
-      return { key: m.key, hc, menPct, womenPct, menWage, womenWage, gap };
+      return { 
+        key: m.key, 
+        hc, 
+        menCount: m.menCount, 
+        womenCount: m.womenCount, 
+        menPct, 
+        womenPct, 
+        menWage, 
+        womenWage, 
+        overallWage, 
+        gap 
+      };
     }).filter(Boolean);
   }
 
@@ -667,6 +681,10 @@ window.TabOverview = (function () {
       sorted = sorted.filter(d => d.gap !== null).sort((a, b) => {
         return breakdownSortDir === 'desc' ? b.gap - a.gap : a.gap - b.gap;
       });
+    } else if (breakdownSort === 'overallWage') {
+      sorted = sorted.filter(d => d.overallWage != null).sort((a, b) => {
+        return breakdownSortDir === 'desc' ? b.overallWage - a.overallWage : a.overallWage - b.overallWage;
+      });
     } else if (breakdownSort === 'womenWage') {
       sorted = sorted.filter(d => d.womenWage != null).sort((a, b) => {
         return breakdownSortDir === 'desc' ? b.womenWage - a.womenWage : a.womenWage - b.womenWage;
@@ -687,8 +705,20 @@ window.TabOverview = (function () {
     const subEl = document.getElementById('breakdownSubTitle');
     if (subEl) {
       const typeMap = { bodyName: 'הגופים', system: 'המערכות', rank: 'הדירוגים', subSystem: 'תת-המערכות' };
-      const sortMapDesc = { hc: 'מספר העובדים הגבוה ביותר', gap: 'פער השכר הגבוה ביותר', womenWage: 'שכר הנשים הגבוה ביותר', menWage: 'שכר הגברים הגבוה ביותר' };
-      const sortMapAsc = { hc: 'מספר העובדים הנמוך ביותר', gap: 'פער השכר הנמוך ביותר (או פער הפוך)', womenWage: 'שכר הנשים הנמוך ביותר', menWage: 'שכר הגברים הנמוך ביותר' };
+      const sortMapDesc = { 
+        hc: 'מספר העובדים הגבוה ביותר', 
+        gap: 'פער השכר הגבוה ביותר', 
+        overallWage: 'השכר הממוצע הכללי הגבוה ביותר',
+        womenWage: 'שכר הנשים הגבוה ביותר', 
+        menWage: 'שכר הגברים הגבוה ביותר' 
+      };
+      const sortMapAsc = { 
+        hc: 'מספר העובדים הנמוך ביותר', 
+        gap: 'פער השכר הנמוך ביותר (או פער הפוך)', 
+        overallWage: 'השכר הממוצע הכללי הנמוך ביותר',
+        womenWage: 'שכר הנשים הנמוך ביותר', 
+        menWage: 'שכר הגברים הנמוך ביותר' 
+      };
       const sortMap = breakdownSortDir === 'desc' ? sortMapDesc : sortMapAsc;
       subEl.textContent = `רשימת ${top.length} ${typeMap[breakdownType] || 'הגופים'} בעלי ${sortMap[breakdownSort] || 'מספר העובדים'} — לחץ על שורה לצלילה`;
     }
@@ -750,14 +780,20 @@ window.TabOverview = (function () {
           const d = top[top.length - 1 - nameIndex] || top.find(x => trunc(x.key, 24) === params[0]?.name);
           if (!d) return params[0]?.name || '';
           const gap = d.menWage && d.womenWage ? (((d.menWage - d.womenWage) / d.menWage) * 100).toFixed(1) : '—';
-          return `<div style="font-family:Heebo,sans-serif; text-align:right;" dir="rtl">` +
+          const overallWageText = d.overallWage ? `₪${Math.round(d.overallWage).toLocaleString('he-IL')}` : '—';
+          const menWageText = d.menWage ? `₪${Math.round(d.menWage).toLocaleString('he-IL')}` : '—';
+          const womenWageText = d.womenWage ? `₪${Math.round(d.womenWage).toLocaleString('he-IL')}` : '—';
+          return `<div style="font-family:Heebo,sans-serif; text-align:right; min-width:200px;" dir="rtl">` +
             `<strong style="font-size:13px; color:#0f172a;">${d.key}</strong><br>` +
-            `<span style="color:#64748b;font-size:11px">סה"כ: ${d.hc.toLocaleString('he-IL')} עובדים</span><br><br>` +
-            `<span style="color:#14b8a6">■</span> <strong>גברים:</strong> ${d.menPct.toFixed(0)}%` +
-            (d.menWage ? ` (₪${Math.round(d.menWage).toLocaleString('he-IL')})` : '') + `<br>` +
-            `<span style="color:#f43f5e">■</span> <strong>נשים:</strong> ${d.womenPct.toFixed(0)}%` +
-            (d.womenWage ? ` (₪${Math.round(d.womenWage).toLocaleString('he-IL')})` : '') + `<br><br>` +
-            `<span style="color:#334155;">פער שכר מגדרי: <strong>${gap}%</strong></span>` +
+            `<div style="font-size:11px; color:#64748b; margin-top:2px;">סה"כ עובדים: <strong>${d.hc.toLocaleString('he-IL')}</strong></div>` +
+            `<div style="font-size:11px; color:#334155; margin-bottom:6px;">שכר ממוצע כללי: <strong>${overallWageText}</strong></div>` +
+            `<div style="border-top:1px solid #e2e8f0; padding-top:5px; margin-top:4px; line-height:1.6;">` +
+              `<span style="color:#0284c7">■</span> <strong>גברים:</strong> ${d.menCount.toLocaleString('he-IL')} עובדים · שכר: ${menWageText}<br>` +
+              `<span style="color:#be185d">■</span> <strong>נשים:</strong> ${d.womenCount.toLocaleString('he-IL')} עובדות · שכר: ${womenWageText}` +
+            `</div>` +
+            `<div style="border-top:1px solid #e2e8f0; padding-top:4px; margin-top:4px; font-size:11px; color:#334155;">` +
+              `פער שכר מגדרי: <strong style="color:${d.gap > 0 ? '#e11d48' : '#059669'}">${gap}%</strong>` +
+            `</div>` +
             `</div>`;
         },
         textStyle: { fontFamily: 'Heebo' }
