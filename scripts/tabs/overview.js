@@ -610,6 +610,7 @@ window.TabOverview = (function () {
   let bodyBreakdownChart = null;
   let breakdownType = 'bodyName'; // 'system' | 'bodyName' | 'rank' | 'subSystem'
   let breakdownSort = 'hc';       // 'hc' | 'gap' | 'womenWage' | 'menWage'
+  let breakdownSortDir = 'desc';  // 'desc' | 'asc'
   let breakdownTopN = 15;
   let _lastBreakdownRecords = [];
 
@@ -660,16 +661,24 @@ window.TabOverview = (function () {
 
     const allData = _aggregateBreakdown(_lastBreakdownRecords, breakdownType);
 
-    // Apply Sorting
+    // Apply Sorting & Direction
     let sorted = [...allData];
     if (breakdownSort === 'gap') {
-      sorted = sorted.filter(d => d.gap !== null).sort((a, b) => b.gap - a.gap);
+      sorted = sorted.filter(d => d.gap !== null).sort((a, b) => {
+        return breakdownSortDir === 'desc' ? b.gap - a.gap : a.gap - b.gap;
+      });
     } else if (breakdownSort === 'womenWage') {
-      sorted = sorted.filter(d => d.womenWage != null).sort((a, b) => b.womenWage - a.womenWage);
+      sorted = sorted.filter(d => d.womenWage != null).sort((a, b) => {
+        return breakdownSortDir === 'desc' ? b.womenWage - a.womenWage : a.womenWage - b.womenWage;
+      });
     } else if (breakdownSort === 'menWage') {
-      sorted = sorted.filter(d => d.menWage != null).sort((a, b) => b.menWage - a.menWage);
+      sorted = sorted.filter(d => d.menWage != null).sort((a, b) => {
+        return breakdownSortDir === 'desc' ? b.menWage - a.menWage : a.menWage - b.menWage;
+      });
     } else {
-      sorted = sorted.sort((a, b) => b.hc - a.hc);
+      sorted = sorted.sort((a, b) => {
+        return breakdownSortDir === 'desc' ? b.hc - a.hc : a.hc - b.hc;
+      });
     }
 
     const top = sorted.slice(0, breakdownTopN);
@@ -678,8 +687,10 @@ window.TabOverview = (function () {
     const subEl = document.getElementById('breakdownSubTitle');
     if (subEl) {
       const typeMap = { bodyName: 'הגופים', system: 'המערכות', rank: 'הדירוגים', subSystem: 'תת-המערכות' };
-      const sortMap = { hc: 'מספר העובדים הגבוה ביותר', gap: 'פער השכר הגבוה ביותר', womenWage: 'שכר הנשים הגבוה ביותר', menWage: 'שכר הגברים הגבוה ביותר' };
-      subEl.textContent = `רשימת ${top.length} ${typeMap[breakdownType] || 'הגופים'} בעלי ${sortMap[breakdownSort] || 'מספר העובדים הגבוה ביותר'} — לחץ על שורה לצלילה`;
+      const sortMapDesc = { hc: 'מספר העובדים הגבוה ביותר', gap: 'פער השכר הגבוה ביותר', womenWage: 'שכר הנשים הגבוה ביותר', menWage: 'שכר הגברים הגבוה ביותר' };
+      const sortMapAsc = { hc: 'מספר העובדים הנמוך ביותר', gap: 'פער השכר הנמוך ביותר (או פער הפוך)', womenWage: 'שכר הנשים הנמוך ביותר', menWage: 'שכר הגברים הנמוך ביותר' };
+      const sortMap = breakdownSortDir === 'desc' ? sortMapDesc : sortMapAsc;
+      subEl.textContent = `רשימת ${top.length} ${typeMap[breakdownType] || 'הגופים'} בעלי ${sortMap[breakdownSort] || 'מספר העובדים'} — לחץ על שורה לצלילה`;
     }
 
     // Reverse for bottom-to-top display (echarts inverse)
@@ -936,6 +947,32 @@ window.TabOverview = (function () {
         breakdownSort = btn.dataset.sort;
         document.querySelectorAll('.btnBreakdownSort').forEach(b => {
           const a = b.dataset.sort === breakdownSort;
+          b.classList.toggle('bg-white', a);
+          b.classList.toggle('text-slate-900', a);
+          b.classList.toggle('shadow-sm', a);
+          b.classList.toggle('text-slate-600', !a);
+        });
+        _drawBodyBreakdownChart();
+      });
+    });
+
+    // Direction buttons
+    const dBtns = document.querySelectorAll('.btnBreakdownDir');
+    dBtns.forEach(btn => {
+      const fresh = btn.cloneNode(true);
+      btn.parentNode.replaceChild(fresh, btn);
+    });
+    document.querySelectorAll('.btnBreakdownDir').forEach(btn => {
+      const isActive = btn.dataset.dir === breakdownSortDir;
+      btn.classList.toggle('bg-white', isActive);
+      btn.classList.toggle('text-slate-900', isActive);
+      btn.classList.toggle('shadow-sm', isActive);
+      btn.classList.toggle('text-slate-600', !isActive);
+
+      btn.addEventListener('click', () => {
+        breakdownSortDir = btn.dataset.dir;
+        document.querySelectorAll('.btnBreakdownDir').forEach(b => {
+          const a = b.dataset.dir === breakdownSortDir;
           b.classList.toggle('bg-white', a);
           b.classList.toggle('text-slate-900', a);
           b.classList.toggle('shadow-sm', a);

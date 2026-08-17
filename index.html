@@ -263,7 +263,7 @@
               <h3 class="text-base font-bold text-slate-800">פילוח והשוואת שכר</h3>
               <p id="breakdownSubTitle" class="text-xs text-slate-500 mt-0.5">רשימת 15 הגופים בעלי מספר העובדים הגבוה ביותר — לחץ על שורה לצלילה</p>
             </div>
-            <!-- Controls Group: Sort & Top N -->
+            <!-- Controls Group: Sort, Dir & Top N -->
             <div class="flex flex-wrap items-center gap-3">
               <!-- Sort buttons -->
               <div class="flex items-center gap-1 shrink-0 bg-slate-100 border border-slate-200 rounded-lg p-1">
@@ -272,6 +272,13 @@
                 <button data-sort="gap" class="btnBreakdownSort px-2.5 py-1 text-xs font-bold rounded transition-colors text-slate-600 hover:bg-white">פער שכר</button>
                 <button data-sort="womenWage" class="btnBreakdownSort px-2.5 py-1 text-xs font-bold rounded transition-colors text-slate-600 hover:bg-white">שכר נשים</button>
                 <button data-sort="menWage" class="btnBreakdownSort px-2.5 py-1 text-xs font-bold rounded transition-colors text-slate-600 hover:bg-white">שכר גברים</button>
+              </div>
+
+              <!-- Direction buttons -->
+              <div class="flex items-center gap-1 shrink-0 bg-slate-100 border border-slate-200 rounded-lg p-1">
+                <span class="text-xs font-semibold text-slate-600 px-1">סדר:</span>
+                <button data-dir="desc" class="btnBreakdownDir px-2.5 py-1 text-xs font-bold rounded transition-colors bg-white text-slate-900 shadow-sm">גבוה ↓</button>
+                <button data-dir="asc" class="btnBreakdownDir px-2.5 py-1 text-xs font-bold rounded transition-colors text-slate-600 hover:bg-white">נמוך ↑</button>
               </div>
 
               <!-- Top N buttons -->
