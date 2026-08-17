@@ -64,11 +64,42 @@ window.InsightsEngine = (function () {
 
   function overviewInsights(records, year) {
     const lines = [];
-    const mw = wAvgMen(records);
-    const ww = wAvgWomen(records);
-    const g = gap(mw, ww);
-    const total = headcount(records);
-    const ws = womenShare(records);
+    const appState = (window.App && window.App.state) || null;
+    const ptData = (appState && appState.data && appState.data.partTime) || null;
+    let mw, ww, g, total, ws;
+
+    if (appState && (!appState.filters.rank || appState.filters.rank.length === 0) && ptData && ptData.length > 0) {
+      let ptFiltered = ptData.filter(r => r.year === Number(year));
+      if (appState.filters.system && appState.filters.system.length > 0) {
+        ptFiltered = ptFiltered.filter(r => appState.filters.system.includes(r.system));
+      }
+      if (appState.filters.subSystem && appState.filters.subSystem.length > 0) {
+        ptFiltered = ptFiltered.filter(r => appState.filters.subSystem.includes(r.subSystem));
+      }
+      if (appState.filters.bodyName && appState.filters.bodyName.length > 0) {
+        ptFiltered = ptFiltered.filter(r => appState.filters.bodyName.includes(r.bodyName));
+      }
+
+      let ft_ms = 0, ft_mc = 0, ft_ws = 0, ft_wc = 0, ft_tc = 0, ft_w_tot = 0;
+      ptFiltered.forEach(r => {
+        const mc = r.ftMenCount || 0, wc = r.ftWomenCount || 0, tc = r.ftTotalCount || (mc + wc);
+        ft_w_tot += wc;
+        ft_tc += tc;
+        if (r.ftMenWage && mc > 0) { ft_ms += r.ftMenWage * mc; ft_mc += mc; }
+        if (r.ftWomenWage && wc > 0) { ft_ws += r.ftWomenWage * wc; ft_wc += wc; }
+      });
+      mw = ft_mc > 0 ? ft_ms / ft_mc : null;
+      ww = ft_wc > 0 ? ft_ws / ft_wc : null;
+      g = gap(mw, ww);
+      total = Math.round(ft_tc);
+      ws = ft_tc > 0 ? (ft_w_tot / ft_tc) * 100 : null;
+    } else {
+      mw = wAvgMen(records);
+      ww = wAvgWomen(records);
+      g = gap(mw, ww);
+      total = Math.round(headcount(records));
+      ws = womenShare(records);
+    }
 
     lines.push(`<strong>בשנת ${year}</strong>, פער השכר הכולל עומד על <strong class="text-rose-600">${fmtPct(g)}</strong>.`);
     lines.push(`שכר גברים ממוצע: ${fmtShekel(mw)}, שכר נשים ממוצע: ${fmtShekel(ww)}.`);
