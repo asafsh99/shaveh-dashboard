@@ -921,11 +921,46 @@ window.TabOverview = (function () {
     });
   }
 
+  function _syncBreakdownControlsUI() {
+    // Sort buttons UI
+    document.querySelectorAll('.btnBreakdownSort').forEach(b => {
+      const a = b.dataset.sort === breakdownSort;
+      b.classList.toggle('bg-white', a);
+      b.classList.toggle('text-slate-900', a);
+      b.classList.toggle('shadow-sm', a);
+      b.classList.toggle('text-slate-600', !a);
+    });
+
+    // Direction buttons UI
+    document.querySelectorAll('.btnBreakdownDir').forEach(b => {
+      const a = b.dataset.dir === breakdownSortDir;
+      b.classList.toggle('bg-white', a);
+      b.classList.toggle('text-slate-900', a);
+      b.classList.toggle('shadow-sm', a);
+      b.classList.toggle('text-slate-600', !a);
+    });
+
+    // Top-N buttons UI
+    document.querySelectorAll('.btnBreakdownN').forEach(b => {
+      const a = parseInt(b.dataset.n) === breakdownTopN;
+      b.classList.toggle('bg-white', a);
+      b.classList.toggle('text-slate-900', a);
+      b.classList.toggle('shadow-sm', a);
+      b.classList.toggle('text-slate-600', !a);
+    });
+
+    // Radio UI
+    document.querySelectorAll('.bodyBreakdownRadio').forEach(r => {
+      r.checked = (r.value === breakdownType);
+    });
+  }
+
   function _bindBodyBreakdownControls() {
     // Radio buttons (Type)
     document.querySelectorAll('.bodyBreakdownRadio').forEach(radio => {
       radio.onchange = () => {
         breakdownType = radio.value;
+        _syncBreakdownControlsUI();
         _drawBodyBreakdownChart();
       };
     });
@@ -937,21 +972,14 @@ window.TabOverview = (function () {
       btn.parentNode.replaceChild(fresh, btn);
     });
     document.querySelectorAll('.btnBreakdownSort').forEach(btn => {
-      const isActive = btn.dataset.sort === breakdownSort;
-      btn.classList.toggle('bg-white', isActive);
-      btn.classList.toggle('text-slate-900', isActive);
-      btn.classList.toggle('shadow-sm', isActive);
-      btn.classList.toggle('text-slate-600', !isActive);
-
       btn.addEventListener('click', () => {
-        breakdownSort = btn.dataset.sort;
-        document.querySelectorAll('.btnBreakdownSort').forEach(b => {
-          const a = b.dataset.sort === breakdownSort;
-          b.classList.toggle('bg-white', a);
-          b.classList.toggle('text-slate-900', a);
-          b.classList.toggle('shadow-sm', a);
-          b.classList.toggle('text-slate-600', !a);
-        });
+        if (breakdownSort === btn.dataset.sort) {
+          // If clicking active button, toggle direction!
+          breakdownSortDir = (breakdownSortDir === 'desc') ? 'asc' : 'desc';
+        } else {
+          breakdownSort = btn.dataset.sort;
+        }
+        _syncBreakdownControlsUI();
         _drawBodyBreakdownChart();
       });
     });
@@ -963,21 +991,9 @@ window.TabOverview = (function () {
       btn.parentNode.replaceChild(fresh, btn);
     });
     document.querySelectorAll('.btnBreakdownDir').forEach(btn => {
-      const isActive = btn.dataset.dir === breakdownSortDir;
-      btn.classList.toggle('bg-white', isActive);
-      btn.classList.toggle('text-slate-900', isActive);
-      btn.classList.toggle('shadow-sm', isActive);
-      btn.classList.toggle('text-slate-600', !isActive);
-
       btn.addEventListener('click', () => {
         breakdownSortDir = btn.dataset.dir;
-        document.querySelectorAll('.btnBreakdownDir').forEach(b => {
-          const a = b.dataset.dir === breakdownSortDir;
-          b.classList.toggle('bg-white', a);
-          b.classList.toggle('text-slate-900', a);
-          b.classList.toggle('shadow-sm', a);
-          b.classList.toggle('text-slate-600', !a);
-        });
+        _syncBreakdownControlsUI();
         _drawBodyBreakdownChart();
       });
     });
@@ -989,24 +1005,14 @@ window.TabOverview = (function () {
       btn.parentNode.replaceChild(fresh, btn);
     });
     document.querySelectorAll('.btnBreakdownN').forEach(btn => {
-      const isActive = parseInt(btn.dataset.n) === breakdownTopN;
-      btn.classList.toggle('bg-white', isActive);
-      btn.classList.toggle('text-slate-900', isActive);
-      btn.classList.toggle('shadow-sm', isActive);
-      btn.classList.toggle('text-slate-600', !isActive);
-
       btn.addEventListener('click', () => {
         breakdownTopN = parseInt(btn.dataset.n);
-        document.querySelectorAll('.btnBreakdownN').forEach(b => {
-          const a = parseInt(b.dataset.n) === breakdownTopN;
-          b.classList.toggle('bg-white', a);
-          b.classList.toggle('text-slate-900', a);
-          b.classList.toggle('shadow-sm', a);
-          b.classList.toggle('text-slate-600', !a);
-        });
+        _syncBreakdownControlsUI();
         _drawBodyBreakdownChart();
       });
     });
+
+    _syncBreakdownControlsUI();
   }
 
   // ── Public ────────────────────────────────────────────────────
