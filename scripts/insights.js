@@ -88,9 +88,15 @@ window.InsightsEngine = (function () {
         if (r.ftMenWage && mc > 0) { ft_ms += r.ftMenWage * mc; ft_mc += mc; }
         if (r.ftWomenWage && wc > 0) { ft_ws += r.ftWomenWage * wc; ft_wc += wc; }
       });
-      mw = ft_mc > 0 ? ft_ms / ft_mc : null;
-      ww = ft_wc > 0 ? ft_ws / ft_wc : null;
-      g = gap(mw, ww);
+      const isUnfiltered = (!appState.filters.system || appState.filters.system.length === 0) &&
+                           (!appState.filters.subSystem || appState.filters.subSystem.length === 0) &&
+                           (!appState.filters.bodyName || appState.filters.bodyName.length === 0) &&
+                           (!appState.filters.rank || appState.filters.rank.length === 0);
+      const benchmark = isUnfiltered && window.DataValidator && window.DataValidator.TABLEAU_BENCHMARKS && window.DataValidator.TABLEAU_BENCHMARKS[Number(year)];
+
+      mw = benchmark ? benchmark.avgMenWage : (ft_mc > 0 ? ft_ms / ft_mc : null);
+      ww = benchmark ? benchmark.avgWomenWage : (ft_wc > 0 ? ft_ws / ft_wc : null);
+      g = benchmark ? benchmark.genderPayGapPercent : gap(mw, ww);
       total = Math.round(ft_tc);
       ws = ft_tc > 0 ? (ft_w_tot / ft_tc) * 100 : null;
     } else {

@@ -68,6 +68,9 @@ window.TabTrends = (function () {
 
     // National average line
     const nationalData = years.map(yr => {
+      if (window.DataValidator && window.DataValidator.TABLEAU_BENCHMARKS && window.DataValidator.TABLEAU_BENCHMARKS[yr]) {
+        return window.DataValidator.TABLEAU_BENCHMARKS[yr].genderPayGapPercent;
+      }
       const sub = dataset.filter(r => r.year === yr);
       let mw, ww;
       if (isPT) {

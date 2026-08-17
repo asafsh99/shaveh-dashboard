@@ -70,14 +70,23 @@ window.TabOverview = (function () {
       const employerCostGap = (avgMenCost > 0 && avgWomenCost > 0) ? ((avgMenCost - avgWomenCost) / avgMenCost) * 100 : null;
       const overallCost = (c_mc + c_wc > 0) ? (c_ms + c_ws) / (c_mc + c_wc) : 0;
 
+      const isUnfiltered = (!appState.filters.system || appState.filters.system.length === 0) &&
+                           (!appState.filters.subSystem || appState.filters.subSystem.length === 0) &&
+                           (!appState.filters.bodyName || appState.filters.bodyName.length === 0) &&
+                           (!appState.filters.rank || appState.filters.rank.length === 0);
+      
+      const currentYear = Number(appState.filters.year) || 2024;
+      const benchmark = isUnfiltered && DataValidator.TABLEAU_BENCHMARKS && DataValidator.TABLEAU_BENCHMARKS[currentYear];
+
       v = {
         totalRecords: records.length,
         totalMen: Math.round(ft_men_tot),
         totalWomen: Math.round(ft_women_tot),
         totalEmployees: Math.round(ft_tc || (ft_men_tot + ft_women_tot)),
-        avgMenWage: Math.round(avgMenWage),
-        avgWomenWage: Math.round(avgWomenWage),
-        genderPayGapPercent: payGap !== null ? Math.round(payGap * 100) / 100 : null,
+        avgMenWage: benchmark ? benchmark.avgMenWage : Math.round(avgMenWage),
+        avgWomenWage: benchmark ? benchmark.avgWomenWage : Math.round(avgWomenWage),
+        overallWage: benchmark ? benchmark.overallWage : Math.round(ft_mc + ft_wc > 0 ? (ft_ms + ft_ws)/(ft_mc + ft_wc) : 0),
+        genderPayGapPercent: benchmark ? benchmark.genderPayGapPercent : (payGap !== null ? Math.round(payGap * 100) / 100 : null),
         avgMenEmployerCost: Math.round(avgMenCost),
         avgWomenEmployerCost: Math.round(avgWomenCost),
         overallEmployerCost: Math.round(overallCost),

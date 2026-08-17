@@ -6,6 +6,16 @@
 
 window.DataValidator = (function() {
 
+  const PRIVACY_THRESHOLD = 5;
+
+  const TABLEAU_BENCHMARKS = {
+    2024: { avgMenWage: 21632, avgWomenWage: 16051, overallWage: 17833, genderPayGapPercent: 25.80 },
+    2023: { avgMenWage: 20834, avgWomenWage: 15588, overallWage: 17300, genderPayGapPercent: 25.20 },
+    2022: { avgMenWage: 19513, avgWomenWage: 14336, overallWage: 16042, genderPayGapPercent: 26.50 },
+    2021: { avgMenWage: 19049, avgWomenWage: 13992, overallWage: 15565, genderPayGapPercent: 26.50 },
+    2020: { avgMenWage: 20705, avgWomenWage: 15632, overallWage: 16912, genderPayGapPercent: 24.50 }
+  };
+
   /**
    * Calculates Total Employees (Men + Women)
    * @param {Array<Object>} records 
@@ -289,6 +299,7 @@ window.DataValidator = (function() {
     calculateAggregateGap,
     computeKPIs,
     runValidationReport,
-    validateLoadedData
+    validateLoadedData,
+    TABLEAU_BENCHMARKS
   };
 })();
