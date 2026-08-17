@@ -616,8 +616,81 @@ window.TabOverview = (function () {
 
   function _aggregateBreakdown(records, groupKey) {
     const T = (window.DataEngine && window.DataEngine.PRIVACY_THRESHOLD) || 5;
-    const map = {};
 
+    // Check if we can use partTime (official full-time body dataset) for bodyName, system, subSystem
+    const appState = (window.App && window.App.state) || null;
+    const ptData = (appState && appState.data && appState.data.partTime) || null;
+
+    if (groupKey !== 'rank' && ptData && ptData.length > 0) {
+      // Filter partTime records matching current active filters
+      let ptFiltered = ptData;
+      if (appState.filters.year && appState.activeTab !== 'trends') {
+        ptFiltered = ptFiltered.filter(r => r.year === Number(appState.filters.year));
+      }
+      if (appState.filters.system && appState.filters.system.length > 0) {
+        ptFiltered = ptFiltered.filter(r => appState.filters.system.includes(r.system));
+      }
+      if (appState.filters.subSystem && appState.filters.subSystem.length > 0) {
+        ptFiltered = ptFiltered.filter(r => appState.filters.subSystem.includes(r.subSystem));
+      }
+      if (appState.filters.bodyName && appState.filters.bodyName.length > 0) {
+        ptFiltered = ptFiltered.filter(r => appState.filters.bodyName.includes(r.bodyName));
+      }
+
+      const map = {};
+      ptFiltered.forEach(r => {
+        const key = r[groupKey];
+        if (!key) return;
+        if (!map[key]) map[key] = {
+          key,
+          menCount: 0, womenCount: 0, totalCount: 0,
+          menWageSum: 0, womenWageSum: 0, totalWageSum: 0,
+          menWageCount: 0, womenWageCount: 0, totalWageCount: 0
+        };
+        const m = map[key];
+        const mc = r.ftMenCount || 0, wc = r.ftWomenCount || 0, tc = r.ftTotalCount || (mc + wc);
+        m.menCount += mc;
+        m.womenCount += wc;
+        m.totalCount += tc;
+        if (r.ftMenWage && mc > 0)   { m.menWageSum += r.ftMenWage * mc; m.menWageCount += mc; }
+        if (r.ftWomenWage && wc > 0) { m.womenWageSum += r.ftWomenWage * wc; m.womenWageCount += wc; }
+        if (r.ftTotalWage && tc > 0) { m.totalWageSum += r.ftTotalWage * tc; m.totalWageCount += tc; }
+      });
+
+      return Object.values(map).map(m => {
+        const hc = Math.round(m.totalCount || (m.menCount + m.womenCount));
+        if (hc < T) return null;
+        const menCount = Math.round(m.menCount);
+        const womenCount = Math.round(m.womenCount);
+        const menPct = hc > 0 ? (menCount / hc) * 100 : 0;
+        const womenPct = hc > 0 ? (womenCount / hc) * 100 : 0;
+        const menWage = m.menWageCount > 0 ? Math.round(m.menWageSum / m.menWageCount) : null;
+        const womenWage = m.womenWageCount > 0 ? Math.round(m.womenWageSum / m.womenWageCount) : null;
+        const overallWage = m.totalWageCount > 0 
+          ? Math.round(m.totalWageSum / m.totalWageCount) 
+          : ((m.menWageSum + m.womenWageSum) && (m.menWageCount + m.womenWageCount))
+            ? Math.round((m.menWageSum + m.womenWageSum) / (m.menWageCount + m.womenWageCount))
+            : null;
+        const gap = (menWage != null && womenWage != null && menWage > 0)
+          ? ((menWage - womenWage) / menWage) * 100
+          : null;
+        return {
+          key: m.key,
+          hc,
+          menCount,
+          womenCount,
+          menPct,
+          womenPct,
+          menWage,
+          womenWage,
+          overallWage,
+          gap
+        };
+      }).filter(Boolean);
+    }
+
+    // Otherwise (e.g. for rank aggregation or fallback), aggregate from records
+    const map = {};
     records.forEach(r => {
       const key = r[groupKey];
       if (!key) return;
@@ -636,23 +709,25 @@ window.TabOverview = (function () {
     });
 
     return Object.values(map).map(m => {
-      const hc = m.menCount + m.womenCount;
+      const hc = Math.round(m.menCount + m.womenCount);
       if (hc < T) return null;
-      const menPct  = hc > 0 ? (m.menCount   / hc) * 100 : 0;
-      const womenPct = hc > 0 ? (m.womenCount / hc) * 100 : 0;
-      const menWage   = m.menWageCount   > 0 ? m.menWageSum   / m.menWageCount   : null;
-      const womenWage = m.womenWageCount > 0 ? m.womenWageSum / m.womenWageCount : null;
+      const menCount = Math.round(m.menCount);
+      const womenCount = Math.round(m.womenCount);
+      const menPct  = hc > 0 ? (menCount / hc) * 100 : 0;
+      const womenPct = hc > 0 ? (womenCount / hc) * 100 : 0;
+      const menWage   = m.menWageCount   > 0 ? Math.round(m.menWageSum   / m.menWageCount)   : null;
+      const womenWage = m.womenWageCount > 0 ? Math.round(m.womenWageSum / m.womenWageCount) : null;
       const totalWageSum = m.menWageSum + m.womenWageSum;
       const totalWageCount = m.menWageCount + m.womenWageCount;
-      const overallWage = totalWageCount > 0 ? totalWageSum / totalWageCount : null;
+      const overallWage = totalWageCount > 0 ? Math.round(totalWageSum / totalWageCount) : null;
       const gap = (menWage != null && womenWage != null && menWage > 0)
         ? ((menWage - womenWage) / menWage) * 100
         : null;
       return { 
         key: m.key, 
         hc, 
-        menCount: m.menCount, 
-        womenCount: m.womenCount, 
+        menCount, 
+        womenCount, 
         menPct, 
         womenPct, 
         menWage, 
@@ -783,7 +858,7 @@ window.TabOverview = (function () {
           const overallWageText = d.overallWage ? `₪${Math.round(d.overallWage).toLocaleString('he-IL')}` : '—';
           const menWageText = d.menWage ? `₪${Math.round(d.menWage).toLocaleString('he-IL')}` : '—';
           const womenWageText = d.womenWage ? `₪${Math.round(d.womenWage).toLocaleString('he-IL')}` : '—';
-          const fmtCnt = n => n.toLocaleString('he-IL', { maximumFractionDigits: (n % 1 === 0 ? 0 : 1) });
+          const fmtCnt = n => Math.round(n).toLocaleString('he-IL');
           return `<div style="font-family:Heebo,sans-serif; text-align:right; min-width:200px;" dir="rtl">` +
             `<strong style="font-size:13px; color:#0f172a;">${d.key}</strong><br>` +
             `<div style="font-size:11px; color:#64748b; margin-top:2px;">סה"כ עובדים: <strong>${fmtCnt(d.hc)}</strong></div>` +
