@@ -26,15 +26,30 @@ window.TabTrends = (function () {
     const el = document.getElementById('chartTrajectory');
     if (!el) return;
 
-    const years = [...new Set(allOverview.map(r => r.year))].filter(Boolean).sort((a, b) => a - b);
-    const systems = [...new Set(allOverview.map(r => r.system))].filter(Boolean);
+    const appState = (window.App && window.App.state) || null;
+    const dataset = (appState && appState.data && appState.data.partTime && appState.data.partTime.length > 0) ? appState.data.partTime : allOverview;
+    const isPT = dataset === (appState && appState.data && appState.data.partTime);
+
+    const years = [...new Set(dataset.map(r => r.year))].filter(Boolean).sort((a, b) => a - b);
+    const systems = [...new Set(dataset.map(r => r.system))].filter(Boolean);
 
     const seriesData = systems.map((sys, idx) => {
       const data = years.map(yr => {
-        const sub = allOverview.filter(r => r.system === sys && r.year === yr);
+        const sub = dataset.filter(r => r.system === sys && r.year === yr);
         if (sub.length === 0) return null;
-        const mw = DataValidator.calculateWeightedAverageMenWage(sub);
-        const ww = DataValidator.calculateWeightedAverageWomenWage(sub);
+        let mw, ww;
+        if (isPT) {
+          let ft_ms = 0, ft_mc = 0, ft_ws = 0, ft_wc = 0;
+          sub.forEach(r => {
+            if (r.ftMenWage && r.ftMenCount > 0) { ft_ms += r.ftMenWage * r.ftMenCount; ft_mc += r.ftMenCount; }
+            if (r.ftWomenWage && r.ftWomenCount > 0) { ft_ws += r.ftWomenWage * r.ftWomenCount; ft_wc += r.ftWomenCount; }
+          });
+          mw = ft_mc > 0 ? (ft_ms / ft_mc) : null;
+          ww = ft_wc > 0 ? (ft_ws / ft_wc) : null;
+        } else {
+          mw = DataValidator.calculateWeightedAverageMenWage(sub);
+          ww = DataValidator.calculateWeightedAverageWomenWage(sub);
+        }
         if (!mw || !ww) return null;
         const g = ((mw - ww) / mw) * 100;
         return Math.round(g * 10) / 10;
@@ -53,9 +68,20 @@ window.TabTrends = (function () {
 
     // National average line
     const nationalData = years.map(yr => {
-      const sub = allOverview.filter(r => r.year === yr);
-      const mw = DataValidator.calculateWeightedAverageMenWage(sub);
-      const ww = DataValidator.calculateWeightedAverageWomenWage(sub);
+      const sub = dataset.filter(r => r.year === yr);
+      let mw, ww;
+      if (isPT) {
+        let ft_ms = 0, ft_mc = 0, ft_ws = 0, ft_wc = 0;
+        sub.forEach(r => {
+          if (r.ftMenWage && r.ftMenCount > 0) { ft_ms += r.ftMenWage * r.ftMenCount; ft_mc += r.ftMenCount; }
+          if (r.ftWomenWage && r.ftWomenCount > 0) { ft_ws += r.ftWomenWage * r.ftWomenCount; ft_wc += r.ftWomenCount; }
+        });
+        mw = ft_mc > 0 ? (ft_ms / ft_mc) : null;
+        ww = ft_wc > 0 ? (ft_ws / ft_wc) : null;
+      } else {
+        mw = DataValidator.calculateWeightedAverageMenWage(sub);
+        ww = DataValidator.calculateWeightedAverageWomenWage(sub);
+      }
       if (!mw || !ww) return null;
       const g = ((mw - ww) / mw) * 100;
       return Math.round(g * 10) / 10;

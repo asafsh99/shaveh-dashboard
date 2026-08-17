@@ -24,7 +24,68 @@ window.TabOverview = (function () {
   // ── KPIs ──────────────────────────────────────────────────────
 
   function renderKPIs(records) {
-    const v = DataValidator.computeKPIs(records);
+    const appState = (window.App && window.App.state) || null;
+    const ptData = (appState && appState.data && appState.data.partTime) || null;
+    let v;
+
+    // If no rank filter is active and we have partTime data, use official full-time dataset (Tableau methodology)
+    if (appState && (!appState.filters.rank || appState.filters.rank.length === 0) && ptData && ptData.length > 0) {
+      let ptFiltered = ptData;
+      if (appState.filters.year && appState.activeTab !== 'trends') {
+        ptFiltered = ptFiltered.filter(r => r.year === Number(appState.filters.year));
+      }
+      if (appState.filters.system && appState.filters.system.length > 0) {
+        ptFiltered = ptFiltered.filter(r => appState.filters.system.includes(r.system));
+      }
+      if (appState.filters.subSystem && appState.filters.subSystem.length > 0) {
+        ptFiltered = ptFiltered.filter(r => appState.filters.subSystem.includes(r.subSystem));
+      }
+      if (appState.filters.bodyName && appState.filters.bodyName.length > 0) {
+        ptFiltered = ptFiltered.filter(r => appState.filters.bodyName.includes(r.bodyName));
+      }
+
+      // Compute weighted metrics
+      let ft_ms = 0, ft_mc = 0, ft_ws = 0, ft_wc = 0, ft_tc = 0, ft_men_tot = 0, ft_women_tot = 0;
+      let c_ms = 0, c_mc = 0, c_ws = 0, c_wc = 0;
+
+      ptFiltered.forEach(r => {
+        const mc = r.ftMenCount || 0, wc = r.ftWomenCount || 0, tc = r.ftTotalCount || (mc + wc);
+        ft_men_tot += mc;
+        ft_women_tot += wc;
+        ft_tc += tc;
+
+        if (r.ftMenWage && mc > 0) { ft_ms += r.ftMenWage * mc; ft_mc += mc; }
+        if (r.ftWomenWage && wc > 0) { ft_ws += r.ftWomenWage * wc; ft_wc += wc; }
+
+        if (r.ftMenCost && mc > 0) { c_ms += r.ftMenCost * mc; c_mc += mc; }
+        if (r.ftWomenCost && wc > 0) { c_ws += r.ftWomenCost * wc; c_wc += wc; }
+      });
+
+      const avgMenWage = ft_mc > 0 ? (ft_ms / ft_mc) : 0;
+      const avgWomenWage = ft_wc > 0 ? (ft_ws / ft_wc) : 0;
+      const payGap = (avgMenWage > 0 && avgWomenWage > 0) ? ((avgMenWage - avgWomenWage) / avgMenWage) * 100 : null;
+
+      const avgMenCost = c_mc > 0 ? (c_ms / c_mc) : 0;
+      const avgWomenCost = c_wc > 0 ? (c_ws / c_wc) : 0;
+      const employerCostGap = (avgMenCost > 0 && avgWomenCost > 0) ? ((avgMenCost - avgWomenCost) / avgMenCost) * 100 : null;
+      const overallCost = (c_mc + c_wc > 0) ? (c_ms + c_ws) / (c_mc + c_wc) : 0;
+
+      v = {
+        totalRecords: records.length,
+        totalMen: Math.round(ft_men_tot),
+        totalWomen: Math.round(ft_women_tot),
+        totalEmployees: Math.round(ft_tc || (ft_men_tot + ft_women_tot)),
+        avgMenWage: Math.round(avgMenWage),
+        avgWomenWage: Math.round(avgWomenWage),
+        genderPayGapPercent: payGap !== null ? Math.round(payGap * 100) / 100 : null,
+        avgMenEmployerCost: Math.round(avgMenCost),
+        avgWomenEmployerCost: Math.round(avgWomenCost),
+        overallEmployerCost: Math.round(overallCost),
+        employerCostGapPercent: employerCostGap !== null ? Math.round(employerCostGap * 100) / 100 : null,
+      };
+    } else {
+      v = DataValidator.computeKPIs(records);
+    }
 
     if (v.genderPayGapPercent !== null) {
       document.getElementById('kpiPayGap').textContent = v.genderPayGapPercent.toFixed(2) + '%';
@@ -47,7 +108,7 @@ window.TabOverview = (function () {
     if (mBar) mBar.style.width = ((v.avgMenWage / maxWage) * 100) + '%';
     if (wBar) wBar.style.width = ((v.avgWomenWage / maxWage) * 100) + '%';
 
-    document.getElementById('kpiTotalEmployees').textContent = v.totalEmployees.toLocaleString('he-IL', { maximumFractionDigits: (v.totalEmployees % 1 === 0 ? 0 : 1) });
+    document.getElementById('kpiTotalEmployees').textContent = Math.round(v.totalEmployees).toLocaleString('he-IL');
     document.getElementById('kpiTotalRecords').textContent = v.totalRecords.toLocaleString('he-IL') + ' שורות נתונים';
 
     const ws = v.totalEmployees > 0 ? ((v.totalWomen / v.totalEmployees) * 100).toFixed(1) : '0.0';
