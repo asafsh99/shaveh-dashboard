@@ -223,6 +223,13 @@ window.DataValidator = (function() {
     console.log("%c\n3. Breakdown by Year (2018 - 2024):", "font-weight: bold; color: #047857;");
     console.table(yearBreakdown);
 
+    return {
+      overall,
+      sourceBreakdown,
+      yearBreakdown
+    };
+  }
+
   /**
    * Automated runtime sanity checks on loaded datasets.
    * Catches mismapped columns, percentage vs count issues, and mathematical bounds.
