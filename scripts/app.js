@@ -46,9 +46,14 @@ window.App = (function() {
       updateStatus('טוען ומפענח 4 מערכי נתונים במקביל...');
       loader.classList.remove('hidden');
 
-      // Load all 4 files via the new Stage 5 DataEngine
+      // Load all 4 files via DataEngine
       const rawData = await DataEngine.loadAll();
       state.data = rawData;
+
+      // Run automated data integrity checks on every load
+      if (window.DataValidator && window.DataValidator.validateLoadedData) {
+        DataValidator.validateLoadedData(rawData);
+      }
 
       // Extract filter options based on the overview dataset
       extractMasterFilters(rawData.overview);

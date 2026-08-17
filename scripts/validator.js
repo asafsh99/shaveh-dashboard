@@ -223,11 +223,54 @@ window.DataValidator = (function() {
     console.log("%c\n3. Breakdown by Year (2018 - 2024):", "font-weight: bold; color: #047857;");
     console.table(yearBreakdown);
 
-    return {
-      overall,
-      sourceBreakdown,
-      yearBreakdown
-    };
+  /**
+   * Automated runtime sanity checks on loaded datasets.
+   * Catches mismapped columns, percentage vs count issues, and mathematical bounds.
+   */
+  function validateLoadedData(datasets) {
+    const checks = [];
+    const pt = datasets.partTime || [];
+    const ov = datasets.overview || [];
+
+    // 1. Check count invariant (ensure counts aren't percentages)
+    const maxMen = Math.max(...pt.map(r => r.ftMenCount || 0), 0);
+    const maxWomen = Math.max(...pt.map(r => r.ftWomenCount || 0), 0);
+    if (maxMen > 100 && maxWomen > 100) {
+      checks.push({ test: 'אימות סוג מספרי עובדים (כמויות אמיתיות ולא אחוזים)', status: 'PASS' });
+    } else {
+      checks.push({ test: 'אימות סוג מספרי עובדים', status: 'FAIL', error: 'כמויות העובדים נמוכות מדי או מיוצגות כאחוזים' });
+    }
+
+    // 2. Check mathematical bounds on wages (min <= overall <= max)
+    let boundViolations = 0;
+    pt.forEach(r => {
+      if (r.ftMenWage && r.ftWomenWage && r.ftTotalWage) {
+        const minW = Math.min(r.ftMenWage, r.ftWomenWage) - 5;
+        const maxW = Math.max(r.ftMenWage, r.ftWomenWage) + 5;
+        if (r.ftTotalWage < minW || r.ftTotalWage > maxW) {
+          boundViolations++;
+        }
+      }
+    });
+    if (boundViolations === 0) {
+      checks.push({ test: 'גבולות שכר ממוצע כללי (תמיד בטווח בין שכר גברים לשכר נשים)', status: 'PASS' });
+    } else {
+      checks.push({ test: 'גבולות שכר ממוצע כללי', status: 'FAIL', error: `נמצאו ${boundViolations} חריגות מתמטיות` });
+    }
+
+    // 3. Anchor Benchmark Test (Tekuma / Ashdod / Bank of Israel)
+    const tekuma = pt.find(r => r.year === 2024 && (r.bodyName || '').includes('תקומה'));
+    if (tekuma && tekuma.ftMenCount === 15 && tekuma.ftWomenCount === 34 && Math.round(tekuma.ftTotalWage) === 29833) {
+      checks.push({ test: 'בדיקת עוגן נתוני זהב (מנהלת תקומה 2024)', status: 'PASS' });
+    } else if (tekuma) {
+      checks.push({ test: 'בדיקת עוגן נתוני זהב (מנהלת תקומה 2024)', status: 'WARN', note: 'ערכי מנהלת תקומה שונים מקובץ היחוס' });
+    }
+
+    console.log("%c========================================================", "color: #059669; font-weight: bold;");
+    console.log("%c בדיקות תקינות נתונים אוטומטיות (DATA SANITY CHECKS)", "color: #047857; font-size: 13px; font-weight: bold;");
+    console.log("%c========================================================", "color: #059669; font-weight: bold;");
+    console.table(checks);
+    return checks;
   }
 
   return {
@@ -238,6 +281,7 @@ window.DataValidator = (function() {
     calculateGenderPayGap,
     calculateAggregateGap,
     computeKPIs,
-    runValidationReport
+    runValidationReport,
+    validateLoadedData
   };
 })();
