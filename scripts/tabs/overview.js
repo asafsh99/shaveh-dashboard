@@ -35,10 +35,10 @@ window.TabOverview = (function () {
     }
 
     document.getElementById('kpiMenWage').textContent = fmtShekel(v.avgMenWage);
-    document.getElementById('kpiMenCount').textContent = v.totalMen.toLocaleString('he-IL') + ' עובדים';
+    document.getElementById('kpiMenCount').textContent = v.totalMen.toLocaleString('he-IL', { maximumFractionDigits: (v.totalMen % 1 === 0 ? 0 : 1) }) + ' עובדים';
 
     document.getElementById('kpiWomenWage').textContent = fmtShekel(v.avgWomenWage);
-    document.getElementById('kpiWomenCount').textContent = v.totalWomen.toLocaleString('he-IL') + ' עובדות';
+    document.getElementById('kpiWomenCount').textContent = v.totalWomen.toLocaleString('he-IL', { maximumFractionDigits: (v.totalWomen % 1 === 0 ? 0 : 1) }) + ' עובדות';
 
     // Calculate proportions for the wage bars
     const maxWage = Math.max(v.avgMenWage, v.avgWomenWage, 1);
@@ -47,7 +47,7 @@ window.TabOverview = (function () {
     if (mBar) mBar.style.width = ((v.avgMenWage / maxWage) * 100) + '%';
     if (wBar) wBar.style.width = ((v.avgWomenWage / maxWage) * 100) + '%';
 
-    document.getElementById('kpiTotalEmployees').textContent = v.totalEmployees.toLocaleString('he-IL');
+    document.getElementById('kpiTotalEmployees').textContent = v.totalEmployees.toLocaleString('he-IL', { maximumFractionDigits: (v.totalEmployees % 1 === 0 ? 0 : 1) });
     document.getElementById('kpiTotalRecords').textContent = v.totalRecords.toLocaleString('he-IL') + ' שורות נתונים';
 
     const ws = v.totalEmployees > 0 ? ((v.totalWomen / v.totalEmployees) * 100).toFixed(1) : '0.0';
@@ -783,13 +783,14 @@ window.TabOverview = (function () {
           const overallWageText = d.overallWage ? `₪${Math.round(d.overallWage).toLocaleString('he-IL')}` : '—';
           const menWageText = d.menWage ? `₪${Math.round(d.menWage).toLocaleString('he-IL')}` : '—';
           const womenWageText = d.womenWage ? `₪${Math.round(d.womenWage).toLocaleString('he-IL')}` : '—';
+          const fmtCnt = n => n.toLocaleString('he-IL', { maximumFractionDigits: (n % 1 === 0 ? 0 : 1) });
           return `<div style="font-family:Heebo,sans-serif; text-align:right; min-width:200px;" dir="rtl">` +
             `<strong style="font-size:13px; color:#0f172a;">${d.key}</strong><br>` +
-            `<div style="font-size:11px; color:#64748b; margin-top:2px;">סה"כ עובדים: <strong>${d.hc.toLocaleString('he-IL')}</strong></div>` +
+            `<div style="font-size:11px; color:#64748b; margin-top:2px;">סה"כ עובדים: <strong>${fmtCnt(d.hc)}</strong></div>` +
             `<div style="font-size:11px; color:#334155; margin-bottom:6px;">שכר ממוצע כללי: <strong>${overallWageText}</strong></div>` +
             `<div style="border-top:1px solid #e2e8f0; padding-top:5px; margin-top:4px; line-height:1.6;">` +
-              `<span style="color:#0284c7">■</span> <strong>גברים:</strong> ${d.menCount.toLocaleString('he-IL')} עובדים · שכר: ${menWageText}<br>` +
-              `<span style="color:#be185d">■</span> <strong>נשים:</strong> ${d.womenCount.toLocaleString('he-IL')} עובדות · שכר: ${womenWageText}` +
+              `<span style="color:#0284c7">■</span> <strong>גברים:</strong> ${fmtCnt(d.menCount)} עובדים · שכר: ${menWageText}<br>` +
+              `<span style="color:#be185d">■</span> <strong>נשים:</strong> ${fmtCnt(d.womenCount)} עובדות · שכר: ${womenWageText}` +
             `</div>` +
             `<div style="border-top:1px solid #e2e8f0; padding-top:4px; margin-top:4px; font-size:11px; color:#334155;">` +
               `פער שכר מגדרי: <strong style="color:${d.gap > 0 ? '#e11d48' : '#059669'}">${gap}%</strong>` +

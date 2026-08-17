@@ -69,7 +69,7 @@ window.DataValidator = (function() {
 
   /**
    * Calculates Overall Average Wage (Men + Women combined)
-   * Formula: Sum(AvgMenWage_i*MenCount_i + AvgWomenWage_i*WomenCount_i) / Sum(MenCount_i + WomenCount_i)
+   * Formula: Sum(AvgMenWage_i*MenCount_i + AvgWomenWage_i*WomenCount_i) / Sum(Valid Men + Valid Women)
    * @param {Array<Object>} records 
    * @returns {number}
    */
@@ -80,11 +80,14 @@ window.DataValidator = (function() {
     records.forEach(r => {
       let mc = (r.menCount !== null && r.menCount > 0) ? r.menCount : 0;
       let wc = (r.womenCount !== null && r.womenCount > 0) ? r.womenCount : 0;
-      let mw = r.avgMenWage !== null ? r.avgMenWage : 0;
-      let ww = r.avgWomenWage !== null ? r.avgWomenWage : 0;
-
-      weightedWageSum += (mw * mc) + (ww * wc);
-      validCountSum += (mc + wc);
+      if (r.avgMenWage !== null && mc > 0) {
+        weightedWageSum += r.avgMenWage * mc;
+        validCountSum += mc;
+      }
+      if (r.avgWomenWage !== null && wc > 0) {
+        weightedWageSum += r.avgWomenWage * wc;
+        validCountSum += wc;
+      }
     });
 
     return validCountSum > 0 ? (weightedWageSum / validCountSum) : 0;
@@ -107,6 +110,23 @@ window.DataValidator = (function() {
       if (r.avgWomenEmployerCost !== null && r.womenCount !== null && r.womenCount > 0) {
         sum += r.avgWomenEmployerCost * r.womenCount;
         count += r.womenCount;
+      }
+    });
+    return count > 0 ? (sum / count) : 0;
+  }
+
+  function calculateWeightedAverageEmployerCost(records) {
+    let sum = 0, count = 0;
+    records.forEach(r => {
+      let mc = (r.menCount !== null && r.menCount > 0) ? r.menCount : 0;
+      let wc = (r.womenCount !== null && r.womenCount > 0) ? r.womenCount : 0;
+      if (r.avgMenEmployerCost !== null && mc > 0) {
+        sum += r.avgMenEmployerCost * mc;
+        count += mc;
+      }
+      if (r.avgWomenEmployerCost !== null && wc > 0) {
+        sum += r.avgWomenEmployerCost * wc;
+        count += wc;
       }
     });
     return count > 0 ? (sum / count) : 0;
@@ -147,12 +167,13 @@ window.DataValidator = (function() {
     const counts = calculateTotalEmployees(records);
     const avgMenWage = calculateWeightedAverageMenWage(records);
     const avgWomenWage = calculateWeightedAverageWomenWage(records);
+    const overallWage = calculateOverallAverageWage(records);
     const payGap = calculateGenderPayGap(avgMenWage, avgWomenWage);
 
     const avgMenEmployerCost = calculateWeightedAverageMenEmployerCost(records);
     const avgWomenEmployerCost = calculateWeightedAverageWomenEmployerCost(records);
+    const overallEmployerCost = calculateWeightedAverageEmployerCost(records);
     const employerCostGap = calculateGenderPayGap(avgMenEmployerCost, avgWomenEmployerCost);
-    const overallEmployerCost = (avgMenEmployerCost * counts.totalMen + avgWomenEmployerCost * counts.totalWomen) / (counts.totalEmployees || 1);
 
     return {
       totalRecords: records.length,
@@ -161,6 +182,7 @@ window.DataValidator = (function() {
       totalEmployees: counts.totalEmployees,
       avgMenWage: Math.round(avgMenWage * 100) / 100,
       avgWomenWage: Math.round(avgWomenWage * 100) / 100,
+      overallWage: Math.round(overallWage * 100) / 100,
       genderPayGapPercent: payGap !== null ? Math.round(payGap * 100) / 100 : null,
       avgMenEmployerCost: Math.round(avgMenEmployerCost * 100) / 100,
       avgWomenEmployerCost: Math.round(avgWomenEmployerCost * 100) / 100,
