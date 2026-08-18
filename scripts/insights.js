@@ -97,8 +97,11 @@ window.InsightsEngine = (function () {
       mw = benchmark ? benchmark.avgMenWage : (ft_mc > 0 ? ft_ms / ft_mc : null);
       ww = benchmark ? benchmark.avgWomenWage : (ft_wc > 0 ? ft_ws / ft_wc : null);
       g = benchmark ? benchmark.genderPayGapPercent : gap(mw, ww);
-      total = Math.round(ft_tc);
-      ws = ft_tc > 0 ? (ft_w_tot / ft_tc) * 100 : null;
+      const totMen = records.reduce((s, r) => s + (r.menCount || 0), 0);
+      const totWomen = records.reduce((s, r) => s + (r.womenCount || 0), 0);
+      const totEmp = totMen + totWomen;
+      total = Math.round(totEmp > 0 ? totEmp : ft_tc);
+      ws = total > 0 ? ((totWomen > 0 ? totWomen : ft_w_tot) / total) * 100 : null;
     } else {
       mw = wAvgMen(records);
       ww = wAvgWomen(records);

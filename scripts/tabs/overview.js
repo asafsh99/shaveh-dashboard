@@ -78,11 +78,16 @@ window.TabOverview = (function () {
       const currentYear = Number(appState.filters.year) || 2024;
       const benchmark = isUnfiltered && DataValidator.TABLEAU_BENCHMARKS && DataValidator.TABLEAU_BENCHMARKS[currentYear];
 
+      // Total workforce headcount across all employees (full-time + part-time)
+      const totMen = records.reduce((s, r) => s + (r.menCount || 0), 0);
+      const totWomen = records.reduce((s, r) => s + (r.womenCount || 0), 0);
+      const totEmp = totMen + totWomen;
+
       v = {
         totalRecords: records.length,
-        totalMen: Math.round(ft_men_tot),
-        totalWomen: Math.round(ft_women_tot),
-        totalEmployees: Math.round(ft_tc || (ft_men_tot + ft_women_tot)),
+        totalMen: Math.round(totMen > 0 ? totMen : ft_men_tot),
+        totalWomen: Math.round(totWomen > 0 ? totWomen : ft_women_tot),
+        totalEmployees: Math.round(totEmp > 0 ? totEmp : (ft_tc || (ft_men_tot + ft_women_tot))),
         avgMenWage: benchmark ? benchmark.avgMenWage : Math.round(avgMenWage),
         avgWomenWage: benchmark ? benchmark.avgWomenWage : Math.round(avgWomenWage),
         overallWage: benchmark ? benchmark.overallWage : Math.round(ft_mc + ft_wc > 0 ? (ft_ms + ft_ws)/(ft_mc + ft_wc) : 0),
