@@ -10,7 +10,7 @@ window.TabDirectory = (function () {
   let sortDir = -1; // -1 = desc, 1 = asc
 
   function fmtShekel(v) { return v != null ? '₪' + Math.round(v).toLocaleString('he-IL') : '—'; }
-  function fmtPct(v) { return v != null ? v.toFixed(1) + '%' : '—'; }
+  function fmtPct(v) { return v != null ? '\u202A' + v.toFixed(1) + '%\u202C' : '—'; }
   function fmt(v) { return v != null ? Math.round(v).toLocaleString('he-IL') : '—'; }
 
   function buildAggregateRows(records) {
@@ -23,31 +23,37 @@ window.TabDirectory = (function () {
           bodyName: r.bodyName,
           rank: r.rank || 'כללי',
           system: r.system || '',
-          menCount: 0, womenCount: 0,
+          menCount: 0, womenCount: 0, monthlyCount: 0,
           menWageSum: 0, womenWageSum: 0,
-          menCostSum: 0, womenCostSum: 0
+          menCostSum: 0, womenCostSum: 0,
+          grossRegularSum: 0, grossRegularCount: 0,
+          employerCostSum: 0, employerCostCount: 0
         };
       }
       const m = map[key];
       const mc = r.menCount || 0, wc = r.womenCount || 0;
+      const hc = (r.monthlyEmployeeCount !== null && r.monthlyEmployeeCount > 0) ? r.monthlyEmployeeCount : (mc + wc);
       m.menCount += mc;
       m.womenCount += wc;
+      m.monthlyCount += hc;
       if (r.avgMenWage && mc > 0) m.menWageSum += r.avgMenWage * mc;
       if (r.avgWomenWage && wc > 0) m.womenWageSum += r.avgWomenWage * wc;
       if (r.avgMenEmployerCost && mc > 0) m.menCostSum += r.avgMenEmployerCost * mc;
       if (r.avgWomenEmployerCost && wc > 0) m.womenCostSum += r.avgWomenEmployerCost * wc;
+      if (r.avgGrossRegular && hc > 0) { m.grossRegularSum += r.avgGrossRegular * hc; m.grossRegularCount += hc; }
+      if (r.avgEmployerCost && hc > 0) { m.employerCostSum += r.avgEmployerCost * hc; m.employerCostCount += hc; }
     });
 
     const T = (window.DataEngine && window.DataEngine.PRIVACY_THRESHOLD) || 5;
 
     return Object.values(map).map(m => {
-      const hc = m.menCount + m.womenCount;
+      const hc = m.monthlyCount || (m.menCount + m.womenCount);
       if (hc < T) return null;
 
       const menW = m.menCount > 0 ? m.menWageSum / m.menCount : null;
       const womenW = m.womenCount > 0 ? m.womenWageSum / m.womenCount : null;
-      const avgW = hc > 0 ? (m.menWageSum + m.womenWageSum) / hc : null;
-      const avgCost = hc > 0 ? (m.menCostSum + m.womenCostSum) / hc : null;
+      const avgW = m.grossRegularCount > 0 ? (m.grossRegularSum / m.grossRegularCount) : (hc > 0 ? (m.menWageSum + m.womenWageSum) / hc : null);
+      const avgCost = m.employerCostCount > 0 ? (m.employerCostSum / m.employerCostCount) : (hc > 0 ? (m.menCostSum + m.womenCostSum) / hc : null);
       const gap = (menW && womenW && menW > 0) ? ((menW - womenW) / menW) * 100 : null;
 
       return {
@@ -98,8 +104,8 @@ window.TabDirectory = (function () {
 
     tbody.innerHTML = displayRows.map(r => {
       const gapStyle = r.gap == null ? '' :
-        r.gap > 15 ? 'color:#f43f5e; font-weight:700;' :
-        r.gap < 0 ? 'color:#10b981; font-weight:700;' : '';
+        r.gap > 15 ? 'color:#DC2626; font-weight:700;' :
+        r.gap < 0 ? 'color:#059669; font-weight:700;' : '';
 
       return `<tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
         <td class="px-4 py-2.5 font-medium text-slate-800">${r.bodyName}</td>

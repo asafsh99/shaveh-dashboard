@@ -104,7 +104,8 @@ window.DataValidator = (function() {
 
   /**
    * Calculates Overall Average Wage (Men + Women combined)
-   * Formula: Sum(AvgMenWage_i*MenCount_i + AvgWomenWage_i*WomenCount_i) / Sum(Valid Men + Valid Women)
+   * Prioritizes official reported Tableau/MoF gross wage (avgGrossRegular),
+   * weighted by employee count / jobs, with fallback to gender components.
    * @param {Array<Object>} records 
    * @returns {number}
    */
@@ -113,15 +114,24 @@ window.DataValidator = (function() {
     let validCountSum = 0;
 
     records.forEach(r => {
-      let mc = (r.menCount !== null && r.menCount > 0) ? r.menCount : 0;
-      let wc = (r.womenCount !== null && r.womenCount > 0) ? r.womenCount : 0;
-      if (r.avgMenWage !== null && mc > 0) {
-        weightedWageSum += r.avgMenWage * mc;
-        validCountSum += mc;
-      }
-      if (r.avgWomenWage !== null && wc > 0) {
-        weightedWageSum += r.avgWomenWage * wc;
-        validCountSum += wc;
+      let hc = (r.monthlyEmployeeCount !== null && r.monthlyEmployeeCount > 0)
+        ? r.monthlyEmployeeCount
+        : ((r.menCount || 0) + (r.womenCount || 0));
+
+      if (r.avgGrossRegular !== null && r.avgGrossRegular !== undefined && hc > 0) {
+        weightedWageSum += r.avgGrossRegular * hc;
+        validCountSum += hc;
+      } else {
+        let mc = (r.menCount !== null && r.menCount > 0) ? r.menCount : 0;
+        let wc = (r.womenCount !== null && r.womenCount > 0) ? r.womenCount : 0;
+        if (r.avgMenWage !== null && mc > 0) {
+          weightedWageSum += r.avgMenWage * mc;
+          validCountSum += mc;
+        }
+        if (r.avgWomenWage !== null && wc > 0) {
+          weightedWageSum += r.avgWomenWage * wc;
+          validCountSum += wc;
+        }
       }
     });
 
@@ -153,15 +163,24 @@ window.DataValidator = (function() {
   function calculateWeightedAverageEmployerCost(records) {
     let sum = 0, count = 0;
     records.forEach(r => {
-      let mc = (r.menCount !== null && r.menCount > 0) ? r.menCount : 0;
-      let wc = (r.womenCount !== null && r.womenCount > 0) ? r.womenCount : 0;
-      if (r.avgMenEmployerCost !== null && mc > 0) {
-        sum += r.avgMenEmployerCost * mc;
-        count += mc;
-      }
-      if (r.avgWomenEmployerCost !== null && wc > 0) {
-        sum += r.avgWomenEmployerCost * wc;
-        count += wc;
+      let hc = (r.monthlyEmployeeCount !== null && r.monthlyEmployeeCount > 0)
+        ? r.monthlyEmployeeCount
+        : ((r.menCount || 0) + (r.womenCount || 0));
+
+      if (r.avgEmployerCost !== null && r.avgEmployerCost !== undefined && hc > 0) {
+        sum += r.avgEmployerCost * hc;
+        count += hc;
+      } else {
+        let mc = (r.menCount !== null && r.menCount > 0) ? r.menCount : 0;
+        let wc = (r.womenCount !== null && r.womenCount > 0) ? r.womenCount : 0;
+        if (r.avgMenEmployerCost !== null && mc > 0) {
+          sum += r.avgMenEmployerCost * mc;
+          count += mc;
+        }
+        if (r.avgWomenEmployerCost !== null && wc > 0) {
+          sum += r.avgWomenEmployerCost * wc;
+          count += wc;
+        }
       }
     });
     return count > 0 ? (sum / count) : 0;

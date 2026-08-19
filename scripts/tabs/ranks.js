@@ -16,12 +16,12 @@ window.TabRanks = (function () {
   let currentRankLimit = 20;
 
   const COLORS = {
-    men: '#14b8a6',   // Teal
-    women: '#f43f5e', // Rose
-    gap: '#f43f5e',   // Rose
-    emerald: '#10b981',// Emerald
+    men: '#1D4ED8',    // Blue 700
+    women: '#DB2777',  // Pink 600
+    gap: '#DC2626',    // Red 600
+    emerald: '#059669',// Emerald 600
     tick: '#94a3b8',
-    gridLine: 'rgba(148,163,184,0.15)',
+    gridLine: 'rgba(148,163,184,0.12)',
   };
 
   function fmtShekel(v) { return '₪' + Math.round(v).toLocaleString('he-IL'); }
@@ -129,8 +129,8 @@ window.TabRanks = (function () {
           const d = p.data;
           const labelType = selectedRank ? 'גוף' : 'דירוג';
           return `<strong>${d.name}</strong> (${labelType})<br>` +
-            `שיעור נשים: ${d.value[0].toFixed(1)}%<br>` +
-            `פער שכר: ${d.value[1].toFixed(1)}%<br>` +
+            `שיעור נשים: \u202A${d.value[0].toFixed(1)}%\u202C<br>` +
+            `פער שכר: \u202A${d.value[1].toFixed(1)}%\u202C<br>` +
             `עובדים בדירוג: ${d.hc.toLocaleString('he-IL')}<br>` +
             `גברים: ${fmtShekel(d.menWage)} | נשים: ${fmtShekel(d.womenWage)}`;
         },
@@ -361,14 +361,14 @@ window.TabRanks = (function () {
           const idx = p[0].dataIndex;
           const d = data[idx];
           if (!d) return '';
-          const gapColor = Number(d.gap) > 0 ? '#f43f5e' : '#10b981';
+          const gapColor = Number(d.gap) > 0 ? '#DC2626' : '#059669';
           return `<div class="font-bold text-sm mb-1">${d.rank}</div>
                   <div>שכר ממוצע כולל: <strong>${fmtShekel(d.wage)}</strong></div>
                   <div class="mt-1 pt-1 border-t border-slate-200 text-xs space-y-0.5">
                     <div class="text-teal-600 font-medium">גברים: <strong>${fmtShekel(d.menWage)}</strong> (${d.menCount.toLocaleString('he-IL')} עובדים)</div>
                     <div class="text-rose-500 font-medium">נשים: <strong>${fmtShekel(d.womenWage)}</strong> (${d.womenCount.toLocaleString('he-IL')} עובדות)</div>
                   </div>
-                  <div class="mt-1 text-xs">פער שכר: <strong style="color:${gapColor}">${d.gap}%</strong></div>`;
+                   <div class="mt-1 text-xs">פער שכר: <strong style="color:${gapColor}">‪${d.gap}%‬</strong></div>`;
         },
         textStyle: { fontFamily: 'Heebo' }
       },

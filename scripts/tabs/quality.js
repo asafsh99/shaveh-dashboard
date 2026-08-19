@@ -12,14 +12,14 @@ window.TabQuality = (function () {
   let bubbleChart = null;
 
   const COLORS = {
-    menFt: '#14b8a6',   // Teal 500
-    womenFt: '#f43f5e', // Rose 500
-    menPt: '#99f6e4',   // Teal 200
-    womenPt: '#fecdd3', // Rose 200
-    menLw: '#0f766e',   // Teal 700
-    womenLw: '#be123c', // Rose 700
+    menFt: '#1D4ED8',   // Blue 700 — men full-time
+    womenFt: '#DB2777', // Pink 600 — women full-time
+    menPt: '#93C5FD',   // Blue 300 — men part-time (lighter)
+    womenPt: '#F9A8D4', // Pink 300 — women part-time (lighter)
+    menLw: '#1E3A8A',   // Blue 900 — men low-wage (darker)
+    womenLw: '#9D174D', // Pink 900 — women low-wage (darker)
     tick: '#94a3b8',
-    gridLine: 'rgba(148,163,184,0.15)',
+    gridLine: 'rgba(148,163,184,0.12)',
   };
 
   function fmtShekel(v) { return '₪' + Math.round(v).toLocaleString('he-IL'); }

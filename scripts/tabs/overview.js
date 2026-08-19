@@ -11,11 +11,11 @@ window.TabOverview = (function () {
   let initialized = false;
 
   const COLORS = {
-    men: '#14b8a6',   // Teal
-    women: '#f43f5e', // Rose
-    good: '#10b981',  // Emerald
-    bad: '#f43f5e',   // Rose
-    gridLine: 'rgba(148,163,184,0.15)',
+    men: '#1D4ED8',    // Blue 700
+    women: '#DB2777',  // Pink 600
+    good: '#059669',   // Emerald 600
+    bad: '#DC2626',    // Red 600
+    gridLine: 'rgba(148,163,184,0.12)',
     tick: '#94a3b8',
   };
 
@@ -42,7 +42,7 @@ window.TabOverview = (function () {
 
     if (displayPayGap !== null) {
       document.getElementById('kpiPayGap').textContent = displayPayGap.toFixed(1) + '%';
-      document.getElementById('kpiPayGap').className = 'text-3xl font-extrabold tracking-tight ' + (displayPayGap > 0 ? 'text-rose-500' : 'text-emerald-500');
+      document.getElementById('kpiPayGap').className = 'text-3xl font-extrabold tracking-tight ' + (displayPayGap > 0 ? 'text-red-600' : 'text-emerald-600');
     } else {
       document.getElementById('kpiPayGap').textContent = 'אין נתונים';
       document.getElementById('kpiPayGap').className = 'text-xl font-bold tracking-tight text-slate-400 mt-2';
@@ -117,11 +117,11 @@ window.TabOverview = (function () {
           return `<strong>${sys}</strong><br>` +
             `שכר גברים: ${fmtShekel(d.menWage)}<br>` +
             `שכר נשים: ${fmtShekel(d.womenWage)}<br>` +
-            `פער: ${d.gap.toFixed(1)}%`;
+            `פער: \u202A${d.gap.toFixed(1)}%\u202C`;
         },
         textStyle: { fontFamily: 'Heebo' }
       },
-      grid: { left: 60, right: 60, top: 50, bottom: 30 },
+      grid: { left: 170, right: 120, top: 50, bottom: 30 },
       title: {
         text: 'פער שכר לפי מערכת — השוואת גברים ונשים',
         right: 0,
@@ -155,9 +155,9 @@ window.TabOverview = (function () {
           data: data.map(d => -d.menWage), // negative = left
           itemStyle: { color: COLORS.men, borderRadius: [4, 0, 0, 4] },
           label: {
-            show: true, position: 'left',
+            show: true, position: 'insideLeft', distance: 6,
             formatter: p => fmtShekel(Math.abs(p.value)),
-            fontFamily: 'Heebo', fontSize: 11, color: COLORS.men
+            fontFamily: 'Heebo', fontSize: 11, color: '#fff'
           },
           barMaxWidth: 28,
         },
@@ -168,9 +168,9 @@ window.TabOverview = (function () {
           data: data.map(d => d.womenWage), // positive = right
           itemStyle: { color: COLORS.women, borderRadius: [0, 4, 4, 0] },
           label: {
-            show: true, position: 'right',
+            show: true, position: 'insideRight', distance: 6,
             formatter: p => fmtShekel(p.value),
-            fontFamily: 'Heebo', fontSize: 11, color: COLORS.women
+            fontFamily: 'Heebo', fontSize: 11, color: '#fff'
           },
           barMaxWidth: 28,
         }
@@ -294,7 +294,7 @@ window.TabOverview = (function () {
           { min: 15, max: 30, label: 'גבוה (15-30%)', color: '#ef4444' },
           { min: 5, max: 15, label: 'קל (5-15%)', color: '#fca5a5' },
           { min: -5, max: 5, label: 'שוויוני (±5%)', color: '#fef3c7' },
-          { max: -5, label: 'הפוך (<-5%)', color: '#10b981' }
+          { max: -5, label: 'הפוך (<-5%)', color: '#059669' }
         ],
         textStyle: { fontFamily: 'Heebo', fontSize: 11 },
       },
@@ -508,7 +508,7 @@ window.TabOverview = (function () {
           App.setFilterAndRoute({ bodyName: b.body }, 'overview');
         };
         
-        const gapColor = b.gap > 0 ? 'text-rose-500' : 'text-emerald-500';
+        const gapColor = b.gap > 0 ? 'text-red-600' : 'text-emerald-600';
 
         tr.innerHTML = `
           <td class="px-4 py-3 font-medium text-slate-800">
@@ -517,11 +517,11 @@ window.TabOverview = (function () {
           </td>
           <td class="px-4 py-3 font-bold text-center ${gapColor}" dir="ltr">${b.gap.toFixed(1)}%</td>
           <td class="px-4 py-3 text-center text-slate-600 text-xs">
-            <span class="font-bold text-teal-600">${(b.menCount || 0).toLocaleString('he-IL')}</span>
+            <span class="font-bold text-blue-700">${(b.menCount || 0).toLocaleString('he-IL')}</span>
             <span class="text-[10px] text-slate-400"> (₪${Math.round(b.menWage || 0).toLocaleString('he-IL')})</span>
           </td>
           <td class="px-4 py-3 text-center text-slate-600 text-xs">
-            <span class="font-bold text-rose-500">${(b.womenCount || 0).toLocaleString('he-IL')}</span>
+            <span class="font-bold text-pink-600">${(b.womenCount || 0).toLocaleString('he-IL')}</span>
             <span class="text-[10px] text-slate-400"> (₪${Math.round(b.womenWage || 0).toLocaleString('he-IL')})</span>
           </td>
           <td class="px-4 py-3 font-bold text-center text-slate-800">${b.avgWage ? '₪' + Math.round(b.avgWage).toLocaleString('he-IL') : '—'}</td>
@@ -642,7 +642,7 @@ window.TabOverview = (function () {
       series: [
         { name: 'ברוטו שוטף', type: 'bar', stack: 'total', data: data.map(d => d.gross), itemStyle: { color: '#1e3a8a' } },
         { name: 'תוספת למס', type: 'bar', stack: 'total', data: data.map(d => d.taxAdd), itemStyle: { color: '#d97706' } },
-        { name: 'הפרשות מעסיק', type: 'bar', stack: 'total', data: data.map(d => d.costAdd), itemStyle: { color: '#14b8a6' } }
+        { name: 'הפרשות מעסיק', type: 'bar', stack: 'total', data: data.map(d => d.costAdd), itemStyle: { color: '#1D4ED8' } }
       ]
     });
   }
@@ -671,7 +671,8 @@ window.TabOverview = (function () {
         key,
         menCount: 0, womenCount: 0,
         menWageSum: 0, womenWageSum: 0,
-        menWageCount: 0, womenWageCount: 0
+        menWageCount: 0, womenWageCount: 0,
+        grossRegularSum: 0, grossRegularCount: 0
       };
       const m = map[key];
       const mc = r.menCount || 0, wc = r.womenCount || 0;
@@ -679,6 +680,12 @@ window.TabOverview = (function () {
       m.womenCount += Math.round(wc);
       if (r.avgMenWage && mc > 0)   { m.menWageSum += r.avgMenWage * mc; m.menWageCount += mc; }
       if (r.avgWomenWage && wc > 0) { m.womenWageSum += r.avgWomenWage * wc; m.womenWageCount += wc; }
+      // Use avgGrossRegular (Tableau FTE-weighted overall wage) when available
+      const hcForGross = r.monthlyEmployeeCount || (mc + wc);
+      if (r.avgGrossRegular && hcForGross > 0) {
+        m.grossRegularSum += r.avgGrossRegular * hcForGross;
+        m.grossRegularCount += hcForGross;
+      }
     });
 
     return Object.values(map).map(m => {
@@ -707,9 +714,12 @@ window.TabOverview = (function () {
       const womenPct = hc > 0 ? (womenCount / hc) * 100 : 0;
       const menWage   = m.menWageCount   > 0 ? Math.round(m.menWageSum   / m.menWageCount)   : null;
       const womenWage = m.womenWageCount > 0 ? Math.round(m.womenWageSum / m.womenWageCount) : null;
-      const totalWageSum = m.menWageSum + m.womenWageSum;
-      const totalWageCount = m.menWageCount + m.womenWageCount;
-      const overallWage = totalWageCount > 0 ? Math.round(totalWageSum / totalWageCount) : null;
+      // Prefer avgGrossRegular (Tableau FTE-weighted) for overall wage; fallback to headcount-weighted
+      const overallWage = m.grossRegularCount > 0
+        ? Math.round(m.grossRegularSum / m.grossRegularCount)
+        : (m.menWageCount + m.womenWageCount > 0
+            ? Math.round((m.menWageSum + m.womenWageSum) / (m.menWageCount + m.womenWageCount))
+            : null);
       const gap = (menWage != null && womenWage != null && menWage > 0)
         ? ((menWage - womenWage) / menWage) * 100
         : null;
@@ -854,11 +864,11 @@ window.TabOverview = (function () {
             `<div style="font-size:11px; color:#64748b; margin-top:2px;">סה"כ עובדים: <strong>${fmtCnt(d.hc)}</strong></div>` +
             `<div style="font-size:11px; color:#334155; margin-bottom:6px;">שכר ממוצע כללי: <strong>${overallWageText}</strong></div>` +
             `<div style="border-top:1px solid #e2e8f0; padding-top:5px; margin-top:4px; line-height:1.6;">` +
-              `<span style="color:#0284c7">■</span> <strong>גברים:</strong> ${fmtCnt(d.menCount)} עובדים · שכר: ${menWageText}<br>` +
-              `<span style="color:#be185d">■</span> <strong>נשים:</strong> ${fmtCnt(d.womenCount)} עובדות · שכר: ${womenWageText}` +
+              `<span style="color:#1D4ED8">■</span> <strong>גברים:</strong> ${fmtCnt(d.menCount)} עובדים · שכר: ${menWageText}<br>` +
+              `<span style="color:#DB2777">■</span> <strong>נשים:</strong> ${fmtCnt(d.womenCount)} עובדות · שכר: ${womenWageText}` +
             `</div>` +
             `<div style="border-top:1px solid #e2e8f0; padding-top:4px; margin-top:4px; font-size:11px; color:#334155;">` +
-              `פער שכר מגדרי: <strong style="color:${d.gap > 0 ? '#e11d48' : '#059669'}">${gap}%</strong>` +
+              `פער שכר מגדרי: <strong style="color:${d.gap > 0 ? '#e11d48' : '#059669'}">‪${gap}%‬</strong>` +
             `</div>` +
             `</div>`;
         },
@@ -939,7 +949,7 @@ window.TabOverview = (function () {
           yAxisIndex: 0,
           stack: 'gender',
           data: womenPcts,
-          itemStyle: { color: '#be185d', borderRadius: [0, 0, 0, 0] },
+          itemStyle: { color: '#DB2777', borderRadius: [0, 0, 0, 0] },
           label: {
             show: true,
             position: 'inside',
@@ -957,7 +967,7 @@ window.TabOverview = (function () {
           yAxisIndex: 0,
           stack: 'gender',
           data: menPcts,
-          itemStyle: { color: '#0284c7', borderRadius: [0, 0, 0, 0] },
+          itemStyle: { color: '#1D4ED8', borderRadius: [0, 0, 0, 0] },
           label: {
             show: true,
             position: 'inside',
@@ -975,15 +985,15 @@ window.TabOverview = (function () {
           yAxisIndex: 1,
           stack: 'salary',
           data: womenWages,
-          itemStyle: { color: '#f472b6', borderRadius: [3, 0, 0, 3] },
+          itemStyle: { color: '#DB2777', borderRadius: [3, 0, 0, 3] },
           label: {
             show: true,
             position: 'left',
             formatter: p => p.value !== null ? '₪' + fmtK(p.value) : '',
-            fontFamily: 'Heebo', fontSize: 10, color: '#9d174d', fontWeight: 600
+            fontFamily: 'Heebo', fontSize: 10, color: '#9D174D', fontWeight: 600
           },
           barMaxWidth: 24,
-          emphasis: { focus: 'series', itemStyle: { color: '#db2777' } }
+          emphasis: { focus: 'series', itemStyle: { color: '#BE185D' } }
         },
         {
           // RIGHT CHART — Men wage (positive → right)
@@ -993,15 +1003,15 @@ window.TabOverview = (function () {
           yAxisIndex: 1,
           stack: 'salary',
           data: menWages,
-          itemStyle: { color: '#38bdf8', borderRadius: [0, 3, 3, 0] },
+          itemStyle: { color: '#1D4ED8', borderRadius: [0, 3, 3, 0] },
           label: {
             show: true,
             position: 'right',
             formatter: p => p.value !== null ? '₪' + fmtK(p.value) : '',
-            fontFamily: 'Heebo', fontSize: 10, color: '#0369a1', fontWeight: 600
+            fontFamily: 'Heebo', fontSize: 10, color: '#1E3A8A', fontWeight: 600
           },
           barMaxWidth: 24,
-          emphasis: { focus: 'series', itemStyle: { color: '#0284c7' } }
+          emphasis: { focus: 'series', itemStyle: { color: '#1E40AF' } }
         }
       ]
     });
