@@ -181,10 +181,15 @@ window.DataEngine = (function () {
   // ── Public API ─────────────────────────────────────────────────
 
   /**
-   * Loads all 4 CSV datasets in parallel.
+   * Loads all 4 CSV datasets in parallel (or returns preloaded bundle if running via file:// protocol).
    * @returns {Promise<{overview, partTime, lowWage, minWage}>}
    */
   async function loadAll() {
+    if (window.__PRELOADED_DATA__) {
+      console.log('[DataEngine] Loading from preloaded bundle (instant & file:// compatible)');
+      return window.__PRELOADED_DATA__;
+    }
+
     const [bufOverview, bufPartTime, bufLowWage, bufMinWage] = await Promise.all([
       fetchBuffer('./data/נתוני סקירה כללית (3).csv'),
       fetchBuffer('./data/נתוני חלקיות משרה (1).csv'),

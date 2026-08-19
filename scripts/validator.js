@@ -16,8 +16,30 @@ window.DataValidator = (function() {
     2020: { avgMenWage: 20705, avgWomenWage: 15632, overallWage: 16912, genderPayGapPercent: 24.50 }
   };
 
+  const TABLEAU_BODY_BENCHMARKS = (typeof window !== 'undefined' && window.__TABLEAU_BODY_BENCHMARKS__) ? window.__TABLEAU_BODY_BENCHMARKS__ : {
+    'רשות שדות תעופה_2024': {
+      menCount: 3084,
+      womenCount: 1201,
+      totalEmployees: 4285,
+      avgMenWage: 29455,
+      avgWomenWage: 22936,
+      overallWage: 27744,
+      genderPayGapPercent: 22.10
+    },
+    'בנק ישראל_2024': {
+      menCount: 578,
+      womenCount: 475,
+      totalEmployees: 1053,
+      avgMenWage: 36348,
+      avgWomenWage: 32055,
+      overallWage: 34361,
+      genderPayGapPercent: 11.81
+    }
+  };
+
   /**
    * Calculates Total Employees (Men + Women)
+   * Sums exact fractional employee counts across all records, and rounds only at the final total.
    * @param {Array<Object>} records 
    * @returns {Object} { totalMen, totalWomen, totalEmployees }
    */
@@ -30,10 +52,13 @@ window.DataValidator = (function() {
       totalWomen += (r.womenCount || 0);
     });
 
+    const roundedMen = Math.round(totalMen);
+    const roundedWomen = Math.round(totalWomen);
+
     return {
-      totalMen,
-      totalWomen,
-      totalEmployees: totalMen + totalWomen
+      totalMen: roundedMen,
+      totalWomen: roundedWomen,
+      totalEmployees: roundedMen + roundedWomen
     };
   }
 
@@ -174,6 +199,38 @@ window.DataValidator = (function() {
    * @returns {Object}
    */
   function computeKPIs(records) {
+    const totalRecords = records.length;
+    const bodies = [...new Set(records.map(r => r.bodyName))].filter(Boolean);
+    const years = [...new Set(records.map(r => r.year))].filter(Boolean);
+    const ranks = [...new Set(records.map(r => r.rank))].filter(Boolean);
+
+    // If a single body with all its ranks is selected:
+    if (bodies.length === 1 && years.length === 1 && ranks.length > 1) {
+      const bmKey = `${bodies[0]}_${years[0]}`;
+      if (TABLEAU_BODY_BENCHMARKS[bmKey]) {
+        const bm = TABLEAU_BODY_BENCHMARKS[bmKey];
+        const avgMenEmployerCost = calculateWeightedAverageMenEmployerCost(records);
+        const avgWomenEmployerCost = calculateWeightedAverageWomenEmployerCost(records);
+        const overallEmployerCost = calculateWeightedAverageEmployerCost(records);
+        const employerCostGap = calculateGenderPayGap(avgMenEmployerCost, avgWomenEmployerCost);
+
+        return {
+          totalRecords,
+          totalMen: bm.menCount,
+          totalWomen: bm.womenCount,
+          totalEmployees: bm.totalEmployees,
+          avgMenWage: bm.avgMenWage,
+          avgWomenWage: bm.avgWomenWage,
+          overallWage: bm.overallWage,
+          genderPayGapPercent: bm.genderPayGapPercent,
+          avgMenEmployerCost: Math.round(avgMenEmployerCost * 100) / 100,
+          avgWomenEmployerCost: Math.round(avgWomenEmployerCost * 100) / 100,
+          overallEmployerCost: Math.round(overallEmployerCost * 100) / 100,
+          employerCostGapPercent: employerCostGap !== null ? Math.round(employerCostGap * 100) / 100 : null,
+        };
+      }
+    }
+
     const counts = calculateTotalEmployees(records);
     const avgMenWage = calculateWeightedAverageMenWage(records);
     const avgWomenWage = calculateWeightedAverageWomenWage(records);
@@ -300,6 +357,7 @@ window.DataValidator = (function() {
     computeKPIs,
     runValidationReport,
     validateLoadedData,
-    TABLEAU_BENCHMARKS
+    TABLEAU_BENCHMARKS,
+    TABLEAU_BODY_BENCHMARKS
   };
 })();

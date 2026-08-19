@@ -14,7 +14,8 @@ window.App = (function() {
       lowWage: [],
       minWage: []
     },
-    activeTab: 'overview', // 'overview' | 'ranks' | 'quality' | 'trends'
+    activeTab: 'overview', // 'overview' | 'ranks' | 'quality' | 'trends' | 'directory'
+    workforceScope: 'fullTime', // 'fullTime' | 'allEmployees'
     filters: {
       year: 2024,         // Default to latest year (strictly single-select)
       system: [],

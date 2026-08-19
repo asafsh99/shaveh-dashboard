@@ -216,7 +216,8 @@ window.TabQuality = (function () {
     const mwBodyMap = {};
     minWage.forEach(r => {
       if (!r.bodyName) return;
-      mwBodyMap[r.bodyName] = (mwBodyMap[r.bodyName] || 0) + (r.mwMenCount || 0) + (r.mwWomenCount || 0);
+      const count = (r.totalCount !== null && r.totalCount !== undefined) ? r.totalCount : ((r.menCount || 0) + (r.womenCount || 0) || (r.mwMenCount || 0) + (r.mwWomenCount || 0));
+      mwBodyMap[r.bodyName] = (mwBodyMap[r.bodyName] || 0) + (count || 0);
     });
 
     const ovBodyMap = {};
@@ -237,6 +238,10 @@ window.TabQuality = (function () {
         ovBodyMap[r.bodyName].wageSum += r.avgWomenWage * wHc;
         ovBodyMap[r.bodyName].wageHc += wHc;
       }
+      if (r.avgGrossRegular && !r.avgMenWage && !r.avgWomenWage) {
+        ovBodyMap[r.bodyName].wageSum += r.avgGrossRegular * (mHc + wHc);
+        ovBodyMap[r.bodyName].wageHc += (mHc + wHc);
+      }
       
       ovBodyMap[r.bodyName].hc += (mHc + wHc);
     });
@@ -245,17 +250,18 @@ window.TabQuality = (function () {
     Object.keys(ovBodyMap).forEach(body => {
       const ov = ovBodyMap[body];
       const mwHc = mwBodyMap[body] || 0;
-      if (ov.hc < 10) return;
+      if (ov.hc < 5) return;
 
       const avgWage = ov.wageHc > 0 ? (ov.wageSum / ov.wageHc) : 0;
       if (avgWage === 0) return; // Don't plot bodies with no wage data
 
       const mwPct = (mwHc / ov.hc) * 100;
       if (mwPct > 0) {
-        if (!seriesMap[ov.system]) seriesMap[ov.system] = [];
-        seriesMap[ov.system].push({
+        const sys = ov.system || 'אחר';
+        if (!seriesMap[sys]) seriesMap[sys] = [];
+        seriesMap[sys].push({
           name: body,
-          value: [Math.round(avgWage), Math.round(mwPct * 10) / 10, ov.hc]
+          value: [Math.round(avgWage), Math.round(mwPct * 10) / 10, Math.round(ov.hc), Math.round(mwHc)]
         });
       }
     });

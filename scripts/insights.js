@@ -66,9 +66,14 @@ window.InsightsEngine = (function () {
     const lines = [];
     const appState = (window.App && window.App.state) || null;
     const ptData = (appState && appState.data && appState.data.partTime) || null;
-    let mw, ww, g, total, ws;
+    const hasRankFilter = Boolean(appState && appState.filters.rank && appState.filters.rank.length > 0);
+    let mw, ww, g, totalFt, ws;
 
-    if (appState && (!appState.filters.rank || appState.filters.rank.length === 0) && ptData && ptData.length > 0) {
+    const totMen = records.reduce((s, r) => s + (r.menCount || 0), 0);
+    const totWomen = records.reduce((s, r) => s + (r.womenCount || 0), 0);
+    const totEmpAll = Math.round(totMen + totWomen);
+
+    if (!hasRankFilter && ptData && ptData.length > 0) {
       let ptFiltered = ptData.filter(r => r.year === Number(year));
       if (appState.filters.system && appState.filters.system.length > 0) {
         ptFiltered = ptFiltered.filter(r => appState.filters.system.includes(r.system));
@@ -97,22 +102,23 @@ window.InsightsEngine = (function () {
       mw = benchmark ? benchmark.avgMenWage : (ft_mc > 0 ? ft_ms / ft_mc : null);
       ww = benchmark ? benchmark.avgWomenWage : (ft_wc > 0 ? ft_ws / ft_wc : null);
       g = benchmark ? benchmark.genderPayGapPercent : gap(mw, ww);
-      const totMen = records.reduce((s, r) => s + (r.menCount || 0), 0);
-      const totWomen = records.reduce((s, r) => s + (r.womenCount || 0), 0);
-      const totEmp = totMen + totWomen;
-      total = Math.round(totEmp > 0 ? totEmp : ft_tc);
-      ws = total > 0 ? ((totWomen > 0 ? totWomen : ft_w_tot) / total) * 100 : null;
+      totalFt = Math.round(ft_tc);
+      ws = totEmpAll > 0 ? (totWomen / totEmpAll) * 100 : null;
+
+      lines.push(`<strong>בשנת ${year}</strong>, פער השכר המגדרי למשרה מלאה עומד על <strong class="text-rose-600">${fmtPct(g)}</strong>.`);
+      lines.push(`שכר גברים ממוצע: ${fmtShekel(mw)}, שכר נשים ממוצע: ${fmtShekel(ww)}.`);
+      lines.push(`סה"כ ${fmt(totalFt)} עובדים במשרה מלאה (מתוך ${fmt(totEmpAll)} כלל המועסקים באוכלוסייה), שיעור נשים כולל: ${fmtPct(ws)}.`);
     } else {
       mw = wAvgMen(records);
       ww = wAvgWomen(records);
       g = gap(mw, ww);
-      total = Math.round(headcount(records));
+      totalFt = Math.round(headcount(records));
       ws = womenShare(records);
-    }
 
-    lines.push(`<strong>בשנת ${year}</strong>, פער השכר הכולל עומד על <strong class="text-rose-600">${fmtPct(g)}</strong>.`);
-    lines.push(`שכר גברים ממוצע: ${fmtShekel(mw)}, שכר נשים ממוצע: ${fmtShekel(ww)}.`);
-    lines.push(`סה"כ ${fmt(total)} עובדים, מתוכם ${fmtPct(ws)} נשים.`);
+      lines.push(`<strong>בשנת ${year} (לפי דירוג)</strong>, פער השכר הכולל עומד על <strong class="text-rose-600">${fmtPct(g)}</strong>.`);
+      lines.push(`שכר גברים ממוצע: ${fmtShekel(mw)}, שכר נשים ממוצע: ${fmtShekel(ww)}.`);
+      lines.push(`סה"כ ${fmt(totalFt)} עובדים בדירוג, מתוכם ${fmtPct(ws)} נשים.`);
+    }
 
     // Find system with largest gap
     const systems = [...new Set(records.map(r => r.system))].filter(Boolean);
@@ -244,16 +250,16 @@ window.InsightsEngine = (function () {
     lines.push(`במשרה מלאה: ${fmt(totalFtMen)} גברים, ${fmt(totalFtWomen)} נשים.`);
 
     // Low wage
-    const totalLwWomen = lowWage.reduce((s, r) => s + (r.lwWomenCount || 0), 0);
-    const totalLwMen = lowWage.reduce((s, r) => s + (r.lwMenCount || 0), 0);
+    const totalLwWomen = lowWage.reduce((s, r) => s + (r.womenCount !== undefined && r.womenCount !== null ? r.womenCount : (r.lwWomenCount || 0)), 0);
+    const totalLwMen = lowWage.reduce((s, r) => s + (r.menCount !== undefined && r.menCount !== null ? r.menCount : (r.lwMenCount || 0)), 0);
     const totalLw = totalLwWomen + totalLwMen;
     const lwWomenPct = totalLw > 0 ? (totalLwWomen / totalLw * 100) : null;
 
     lines.push(`<br>${fmt(totalLw)} עובדים מקבלים שכר נמוך מהממוצע — <strong>${fmtPct(lwWomenPct)}</strong> מהם נשים.`);
 
     // Min wage supplement
-    const totalMwWomen = minWage.reduce((s, r) => s + (r.mwWomenCount || 0), 0);
-    const totalMwMen = minWage.reduce((s, r) => s + (r.mwMenCount || 0), 0);
+    const totalMwWomen = minWage.reduce((s, r) => s + (r.womenCount !== undefined && r.womenCount !== null ? r.womenCount : (r.mwWomenCount || 0)), 0);
+    const totalMwMen = minWage.reduce((s, r) => s + (r.menCount !== undefined && r.menCount !== null ? r.menCount : (r.mwMenCount || 0)), 0);
     const totalMw = totalMwWomen + totalMwMen;
     const mwWomenPct = totalMw > 0 ? (totalMwWomen / totalMw * 100) : null;
 

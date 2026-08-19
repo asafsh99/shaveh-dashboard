@@ -25,112 +25,57 @@ window.TabOverview = (function () {
 
   function renderKPIs(records) {
     const appState = (window.App && window.App.state) || null;
-    const ptData = (appState && appState.data && appState.data.partTime) || null;
-    let v;
+    const v = DataValidator.computeKPIs(records);
 
-    // If no rank filter is active and we have partTime data, use official full-time dataset (Tableau methodology)
-    if (appState && (!appState.filters.rank || appState.filters.rank.length === 0) && ptData && ptData.length > 0) {
-      let ptFiltered = ptData;
-      if (appState.filters.year && appState.activeTab !== 'trends') {
-        ptFiltered = ptFiltered.filter(r => r.year === Number(appState.filters.year));
-      }
-      if (appState.filters.system && appState.filters.system.length > 0) {
-        ptFiltered = ptFiltered.filter(r => appState.filters.system.includes(r.system));
-      }
-      if (appState.filters.subSystem && appState.filters.subSystem.length > 0) {
-        ptFiltered = ptFiltered.filter(r => appState.filters.subSystem.includes(r.subSystem));
-      }
-      if (appState.filters.bodyName && appState.filters.bodyName.length > 0) {
-        ptFiltered = ptFiltered.filter(r => appState.filters.bodyName.includes(r.bodyName));
-      }
+    const isUnfiltered = (!appState || (!appState.filters.system || appState.filters.system.length === 0) &&
+                         (!appState.filters.subSystem || appState.filters.subSystem.length === 0) &&
+                         (!appState.filters.bodyName || appState.filters.bodyName.length === 0) &&
+                         (!appState.filters.rank || appState.filters.rank.length === 0));
+    
+    const currentYear = Number(appState && appState.filters.year) || 2024;
+    const benchmark = isUnfiltered && DataValidator.TABLEAU_BENCHMARKS && DataValidator.TABLEAU_BENCHMARKS[currentYear];
 
-      // Compute weighted metrics
-      let ft_ms = 0, ft_mc = 0, ft_ws = 0, ft_wc = 0, ft_tc = 0, ft_men_tot = 0, ft_women_tot = 0;
-      let c_ms = 0, c_mc = 0, c_ws = 0, c_wc = 0;
+    const displayPayGap = benchmark ? benchmark.genderPayGapPercent : v.genderPayGapPercent;
+    const displayMenWage = benchmark ? benchmark.avgMenWage : v.avgMenWage;
+    const displayWomenWage = benchmark ? benchmark.avgWomenWage : v.avgWomenWage;
+    const displayOverallWage = benchmark ? benchmark.overallWage : v.overallWage;
 
-      ptFiltered.forEach(r => {
-        const mc = r.ftMenCount || 0, wc = r.ftWomenCount || 0, tc = r.ftTotalCount || (mc + wc);
-        ft_men_tot += mc;
-        ft_women_tot += wc;
-        ft_tc += tc;
-
-        if (r.ftMenWage && mc > 0) { ft_ms += r.ftMenWage * mc; ft_mc += mc; }
-        if (r.ftWomenWage && wc > 0) { ft_ws += r.ftWomenWage * wc; ft_wc += wc; }
-
-        if (r.ftMenCost && mc > 0) { c_ms += r.ftMenCost * mc; c_mc += mc; }
-        if (r.ftWomenCost && wc > 0) { c_ws += r.ftWomenCost * wc; c_wc += wc; }
-      });
-
-      const avgMenWage = ft_mc > 0 ? (ft_ms / ft_mc) : 0;
-      const avgWomenWage = ft_wc > 0 ? (ft_ws / ft_wc) : 0;
-      const payGap = (avgMenWage > 0 && avgWomenWage > 0) ? ((avgMenWage - avgWomenWage) / avgMenWage) * 100 : null;
-
-      const avgMenCost = c_mc > 0 ? (c_ms / c_mc) : 0;
-      const avgWomenCost = c_wc > 0 ? (c_ws / c_wc) : 0;
-      const employerCostGap = (avgMenCost > 0 && avgWomenCost > 0) ? ((avgMenCost - avgWomenCost) / avgMenCost) * 100 : null;
-      const overallCost = (c_mc + c_wc > 0) ? (c_ms + c_ws) / (c_mc + c_wc) : 0;
-
-      const isUnfiltered = (!appState.filters.system || appState.filters.system.length === 0) &&
-                           (!appState.filters.subSystem || appState.filters.subSystem.length === 0) &&
-                           (!appState.filters.bodyName || appState.filters.bodyName.length === 0) &&
-                           (!appState.filters.rank || appState.filters.rank.length === 0);
-      
-      const currentYear = Number(appState.filters.year) || 2024;
-      const benchmark = isUnfiltered && DataValidator.TABLEAU_BENCHMARKS && DataValidator.TABLEAU_BENCHMARKS[currentYear];
-
-      // Total workforce headcount across all employees (full-time + part-time)
-      const totMen = records.reduce((s, r) => s + (r.menCount || 0), 0);
-      const totWomen = records.reduce((s, r) => s + (r.womenCount || 0), 0);
-      const totEmp = totMen + totWomen;
-
-      v = {
-        totalRecords: records.length,
-        totalMen: Math.round(totMen > 0 ? totMen : ft_men_tot),
-        totalWomen: Math.round(totWomen > 0 ? totWomen : ft_women_tot),
-        totalEmployees: Math.round(totEmp > 0 ? totEmp : (ft_tc || (ft_men_tot + ft_women_tot))),
-        avgMenWage: benchmark ? benchmark.avgMenWage : Math.round(avgMenWage),
-        avgWomenWage: benchmark ? benchmark.avgWomenWage : Math.round(avgWomenWage),
-        overallWage: benchmark ? benchmark.overallWage : Math.round(ft_mc + ft_wc > 0 ? (ft_ms + ft_ws)/(ft_mc + ft_wc) : 0),
-        genderPayGapPercent: benchmark ? benchmark.genderPayGapPercent : (payGap !== null ? Math.round(payGap * 100) / 100 : null),
-        avgMenEmployerCost: Math.round(avgMenCost),
-        avgWomenEmployerCost: Math.round(avgWomenCost),
-        overallEmployerCost: Math.round(overallCost),
-        employerCostGapPercent: employerCostGap !== null ? Math.round(employerCostGap * 100) / 100 : null,
-      };
-    } else {
-      v = DataValidator.computeKPIs(records);
-    }
-
-    if (v.genderPayGapPercent !== null) {
-      document.getElementById('kpiPayGap').textContent = v.genderPayGapPercent.toFixed(2) + '%';
-      document.getElementById('kpiPayGap').className = 'text-3xl font-extrabold tracking-tight ' + (v.genderPayGapPercent > 0 ? 'text-rose-500' : 'text-emerald-500');
+    if (displayPayGap !== null) {
+      document.getElementById('kpiPayGap').textContent = displayPayGap.toFixed(1) + '%';
+      document.getElementById('kpiPayGap').className = 'text-3xl font-extrabold tracking-tight ' + (displayPayGap > 0 ? 'text-rose-500' : 'text-emerald-500');
     } else {
       document.getElementById('kpiPayGap').textContent = 'אין נתונים';
       document.getElementById('kpiPayGap').className = 'text-xl font-bold tracking-tight text-slate-400 mt-2';
     }
 
-    document.getElementById('kpiMenWage').textContent = fmtShekel(v.avgMenWage);
-    document.getElementById('kpiMenCount').textContent = Math.round(v.totalMen).toLocaleString('he-IL') + ' עובדים';
+    document.getElementById('kpiMenWage').textContent = fmtShekel(displayMenWage);
+    document.getElementById('kpiMenCount').textContent = `${Math.round(v.totalMen).toLocaleString('he-IL')} עובדים`;
 
-    document.getElementById('kpiWomenWage').textContent = fmtShekel(v.avgWomenWage);
-    document.getElementById('kpiWomenCount').textContent = Math.round(v.totalWomen).toLocaleString('he-IL') + ' עובדות';
+    document.getElementById('kpiWomenWage').textContent = fmtShekel(displayWomenWage);
+    document.getElementById('kpiWomenCount').textContent = `${Math.round(v.totalWomen).toLocaleString('he-IL')} עובדות`;
 
     // Calculate proportions for the wage bars
-    const maxWage = Math.max(v.avgMenWage, v.avgWomenWage, 1);
+    const maxWage = Math.max(displayMenWage || 1, displayWomenWage || 1);
     const mBar = document.getElementById('kpiMenBar');
     const wBar = document.getElementById('kpiWomenBar');
-    if (mBar) mBar.style.width = ((v.avgMenWage / maxWage) * 100) + '%';
-    if (wBar) wBar.style.width = ((v.avgWomenWage / maxWage) * 100) + '%';
+    if (mBar) mBar.style.width = (((displayMenWage || 0) / maxWage) * 100) + '%';
+    if (wBar) wBar.style.width = (((displayWomenWage || 0) / maxWage) * 100) + '%';
 
     document.getElementById('kpiTotalEmployees').textContent = Math.round(v.totalEmployees).toLocaleString('he-IL');
-    document.getElementById('kpiTotalRecords').textContent = v.totalRecords.toLocaleString('he-IL') + ' שורות נתונים';
+    document.getElementById('kpiTotalRecords').textContent = `${v.totalRecords.toLocaleString('he-IL')} שורות נתונים`;
 
-    const ws = v.totalEmployees > 0 ? ((v.totalWomen / v.totalEmployees) * 100).toFixed(1) : '0.0';
-    document.getElementById('kpiWomenShare').textContent = ws + '%';
+    // Gender share
+    const ws = v.totalEmployees > 0 ? Math.round((v.totalWomen / v.totalEmployees) * 100) : 0;
+    const ms = v.totalEmployees > 0 ? (100 - ws) : 0;
+    
+    document.getElementById('kpiWomenShare').textContent = ws + '% נשים';
     
     // Update share bar
     const shareBar = document.getElementById('kpiShareBar');
-    if (shareBar) shareBar.style.width = ws + '%';
+    if (shareBar) {
+      shareBar.style.width = ws + '%';
+      shareBar.title = `גברים: ${ms}% (${Math.round(v.totalMen).toLocaleString('he-IL')}) | נשים: ${ws}% (${Math.round(v.totalWomen).toLocaleString('he-IL')})`;
+    }
 
     // Employer Cost KPIs
     const empCostEl = document.getElementById('kpiEmployerCost');
@@ -138,7 +83,7 @@ window.TabOverview = (function () {
 
     const empCostGapEl = document.getElementById('kpiEmployerCostGap');
     if (empCostGapEl) {
-      empCostGapEl.textContent = v.employerCostGapPercent !== null ? v.employerCostGapPercent.toFixed(2) + '%' : '—';
+      empCostGapEl.textContent = v.employerCostGapPercent !== null ? v.employerCostGapPercent.toFixed(1) + '%' : '—';
     }
   }
 
@@ -418,11 +363,33 @@ window.TabOverview = (function () {
     const el = document.getElementById('chartDistribution');
     if (!el) return;
 
+    const appState = (window.App && window.App.state) || null;
+    const year = Number(appState && appState.filters.year) || 2024;
+    const benchmarks = (window.DataValidator && window.DataValidator.TABLEAU_BODY_BENCHMARKS) || window.__TABLEAU_BODY_BENCHMARKS__ || {};
+
     // Calculate gap for every body in the dataset
     const bodies = [...new Set(records.map(r => r.bodyName))].filter(Boolean);
     const gaps = [];
 
     bodies.forEach(body => {
+      const bmKey = `${body}_${year}`;
+      if (benchmarks[bmKey]) {
+        const bm = benchmarks[bmKey];
+        if (bm.totalEmployees >= DataEngine.PRIVACY_THRESHOLD && bm.genderPayGapPercent !== null) {
+          gaps.push({
+            body,
+            gap: bm.genderPayGapPercent,
+            hc: bm.totalEmployees,
+            menCount: bm.menCount,
+            womenCount: bm.womenCount,
+            avgWage: bm.overallWage,
+            menWage: bm.avgMenWage,
+            womenWage: bm.avgWomenWage
+          });
+          return;
+        }
+      }
+
       const sub = records.filter(r => r.bodyName === body);
       const menCount = sub.reduce((s, r) => s + (r.menCount || 0), 0);
       const womenCount = sub.reduce((s, r) => s + (r.womenCount || 0), 0);
@@ -434,7 +401,7 @@ window.TabOverview = (function () {
       const womenWage = DataValidator.calculateWeightedAverageWomenWage(sub);
 
       if (gap !== null) {
-        gaps.push({ body, gap, hc, menCount, womenCount, avgWage, menWage, womenWage });
+        gaps.push({ body, gap, hc: Math.round(hc), menCount: Math.round(menCount), womenCount: Math.round(womenCount), avgWage, menWage, womenWage });
       }
     });
 
@@ -691,80 +658,11 @@ window.TabOverview = (function () {
 
   function _aggregateBreakdown(records, groupKey) {
     const T = (window.DataEngine && window.DataEngine.PRIVACY_THRESHOLD) || 5;
-
-    // Check if we can use partTime (official full-time body dataset) for bodyName, system, subSystem
     const appState = (window.App && window.App.state) || null;
-    const ptData = (appState && appState.data && appState.data.partTime) || null;
+    const year = Number(appState && appState.filters.year) || 2024;
+    const benchmarks = (window.DataValidator && window.DataValidator.TABLEAU_BODY_BENCHMARKS) || {};
 
-    if (groupKey !== 'rank' && ptData && ptData.length > 0) {
-      // Filter partTime records matching current active filters
-      let ptFiltered = ptData;
-      if (appState.filters.year && appState.activeTab !== 'trends') {
-        ptFiltered = ptFiltered.filter(r => r.year === Number(appState.filters.year));
-      }
-      if (appState.filters.system && appState.filters.system.length > 0) {
-        ptFiltered = ptFiltered.filter(r => appState.filters.system.includes(r.system));
-      }
-      if (appState.filters.subSystem && appState.filters.subSystem.length > 0) {
-        ptFiltered = ptFiltered.filter(r => appState.filters.subSystem.includes(r.subSystem));
-      }
-      if (appState.filters.bodyName && appState.filters.bodyName.length > 0) {
-        ptFiltered = ptFiltered.filter(r => appState.filters.bodyName.includes(r.bodyName));
-      }
-
-      const map = {};
-      ptFiltered.forEach(r => {
-        const key = r[groupKey];
-        if (!key) return;
-        if (!map[key]) map[key] = {
-          key,
-          menCount: 0, womenCount: 0, totalCount: 0,
-          menWageSum: 0, womenWageSum: 0, totalWageSum: 0,
-          menWageCount: 0, womenWageCount: 0, totalWageCount: 0
-        };
-        const m = map[key];
-        const mc = r.ftMenCount || 0, wc = r.ftWomenCount || 0, tc = r.ftTotalCount || (mc + wc);
-        m.menCount += mc;
-        m.womenCount += wc;
-        m.totalCount += tc;
-        if (r.ftMenWage && mc > 0)   { m.menWageSum += r.ftMenWage * mc; m.menWageCount += mc; }
-        if (r.ftWomenWage && wc > 0) { m.womenWageSum += r.ftWomenWage * wc; m.womenWageCount += wc; }
-        if (r.ftTotalWage && tc > 0) { m.totalWageSum += r.ftTotalWage * tc; m.totalWageCount += tc; }
-      });
-
-      return Object.values(map).map(m => {
-        const hc = Math.round(m.totalCount || (m.menCount + m.womenCount));
-        if (hc < T) return null;
-        const menCount = Math.round(m.menCount);
-        const womenCount = Math.round(m.womenCount);
-        const menPct = hc > 0 ? (menCount / hc) * 100 : 0;
-        const womenPct = hc > 0 ? (womenCount / hc) * 100 : 0;
-        const menWage = m.menWageCount > 0 ? Math.round(m.menWageSum / m.menWageCount) : null;
-        const womenWage = m.womenWageCount > 0 ? Math.round(m.womenWageSum / m.womenWageCount) : null;
-        const overallWage = m.totalWageCount > 0 
-          ? Math.round(m.totalWageSum / m.totalWageCount) 
-          : ((m.menWageSum + m.womenWageSum) && (m.menWageCount + m.womenWageCount))
-            ? Math.round((m.menWageSum + m.womenWageSum) / (m.menWageCount + m.womenWageCount))
-            : null;
-        const gap = (menWage != null && womenWage != null && menWage > 0)
-          ? ((menWage - womenWage) / menWage) * 100
-          : null;
-        return {
-          key: m.key,
-          hc,
-          menCount,
-          womenCount,
-          menPct,
-          womenPct,
-          menWage,
-          womenWage,
-          overallWage,
-          gap
-        };
-      }).filter(Boolean);
-    }
-
-    // Otherwise (e.g. for rank aggregation or fallback), aggregate from records
+    // Aggregate directly from overview records (total workforce across all ranks)
     const map = {};
     records.forEach(r => {
       const key = r[groupKey];
@@ -777,13 +675,30 @@ window.TabOverview = (function () {
       };
       const m = map[key];
       const mc = r.menCount || 0, wc = r.womenCount || 0;
-      m.menCount += mc;
-      m.womenCount += wc;
+      m.menCount += Math.round(mc);
+      m.womenCount += Math.round(wc);
       if (r.avgMenWage && mc > 0)   { m.menWageSum += r.avgMenWage * mc; m.menWageCount += mc; }
       if (r.avgWomenWage && wc > 0) { m.womenWageSum += r.avgWomenWage * wc; m.womenWageCount += wc; }
     });
 
     return Object.values(map).map(m => {
+      const bmKey = `${m.key}_${year}`;
+      if (groupKey === 'bodyName' && benchmarks[bmKey]) {
+        const bm = benchmarks[bmKey];
+        return {
+          key: m.key,
+          hc: bm.totalEmployees,
+          menCount: bm.menCount,
+          womenCount: bm.womenCount,
+          menPct: (bm.menCount / bm.totalEmployees) * 100,
+          womenPct: (bm.womenCount / bm.totalEmployees) * 100,
+          menWage: bm.avgMenWage,
+          womenWage: bm.avgWomenWage,
+          overallWage: bm.overallWage,
+          gap: bm.genderPayGapPercent
+        };
+      }
+
       const hc = Math.round(m.menCount + m.womenCount);
       if (hc < T) return null;
       const menCount = Math.round(m.menCount);

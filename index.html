@@ -215,17 +215,6 @@
         </div>
       </section>
 
-      <!-- AI Insights -->
-      <div class="insight-panel rounded-xl border border-slate-200 p-5 flex gap-4 shadow-sm">
-        <div class="shrink-0 bg-white p-2 rounded-lg border border-slate-100 shadow-sm h-min">
-          <svg class="w-6 h-6 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-        </div>
-        <div>
-          <h3 class="text-sm font-bold text-slate-800 mb-1">תובנות אוטומטיות</h3>
-          <p id="insightsOverview" class="text-sm text-slate-600 leading-relaxed">מנתח נתונים...</p>
-        </div>
-      </div>
-
       <!-- Charts Row 1 -->
       <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm relative group">
@@ -316,16 +305,6 @@
 
     <!-- TAB 2: RANKS -->
     <div id="tab-ranks" class="hidden space-y-6">
-      <div class="insight-panel rounded-xl border border-slate-200 p-5 flex gap-4 shadow-sm">
-        <div class="shrink-0 bg-white p-2 rounded-lg border border-slate-100 shadow-sm h-min">
-          <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-        </div>
-        <div>
-          <h3 class="text-sm font-bold text-slate-800 mb-1">הפרדה מקצועית ופערי שכר</h3>
-          <p id="insightsRanks" class="text-sm text-slate-600 leading-relaxed">מנתח נתונים...</p>
-        </div>
-      </div>
-
       <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm relative group overflow-hidden">
           <!-- Scatter Reset Button -->
@@ -366,16 +345,6 @@
 
     <!-- TAB 3: QUALITY -->
     <div id="tab-quality" class="hidden space-y-6">
-      <div class="insight-panel rounded-xl border border-slate-200 p-5 flex gap-4 shadow-sm">
-        <div class="shrink-0 bg-white p-2 rounded-lg border border-slate-100 shadow-sm h-min">
-          <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </div>
-        <div>
-          <h3 class="text-sm font-bold text-slate-800 mb-1">איכות התעסוקה – חלקיות ושכר נמוך</h3>
-          <p id="insightsQuality" class="text-sm text-slate-600 leading-relaxed">מנתח נתונים...</p>
-        </div>
-      </div>
-
       <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
           <div id="chartStacked" style="height: 380px;"></div>
@@ -389,34 +358,138 @@
       </section>
     </div>
 
-    <!-- TAB 4: TRENDS -->
+    <!-- TAB 4: TRENDS & MULTI-ENTITY COMPARATOR -->
     <div id="tab-trends" class="hidden space-y-6">
-      <div class="insight-panel rounded-xl border border-slate-200 p-5 flex gap-4 shadow-sm">
-        <div class="shrink-0 bg-white p-2 rounded-lg border border-slate-100 shadow-sm h-min">
-          <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
-        </div>
-        <div>
-          <h3 class="text-sm font-bold text-slate-800 mb-1">מגמות רב-שנתיות (2018–2024)</h3>
-          <p id="insightsTrends" class="text-sm text-slate-600 leading-relaxed">מנתח נתונים...</p>
-        </div>
-      </div>
 
-      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm lg:col-span-2">
-          <div id="chartTrajectory" style="height: 400px;"></div>
+      <!-- SECTION 1: FLEXIBLE MULTI-ENTITY COMPARISON STUDIO -->
+      <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5 space-y-5">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-teal-100 text-teal-700 text-xs font-black">1</span>
+              <h3 class="text-base font-bold text-slate-900">סטודיו להשוואה רב-שנתית גמישה</h3>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">בחר מספר גופים, דירוגים או מערכות, הגדר טווח שנים ומדד רצוי, והשווה ביניהם ישירות על גבי אותו הגרף</p>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="flex flex-wrap items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg p-1.5">
+            <span class="text-xs font-semibold text-slate-500 px-1">השוואות מומלצות:</span>
+            <button id="presetHospitals" class="btnPreset px-2 py-1 text-xs font-medium bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-200 shadow-xs transition-colors">🏥 בתי חולים מובילים</button>
+            <button id="presetGovCompanies" class="btnPreset px-2 py-1 text-xs font-medium bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-200 shadow-xs transition-colors">🏢 חברות ממשלתיות</button>
+            <button id="presetFinance" class="btnPreset px-2 py-1 text-xs font-medium bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-200 shadow-xs transition-colors">🏦 פיננסים ובנקים</button>
+            <button id="presetRanks" class="btnPreset px-2 py-1 text-xs font-medium bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-200 shadow-xs transition-colors">🎓 דירוגים מובילים</button>
+          </div>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-          <div id="chartMovers" style="height: 400px;"></div>
+
+        <!-- Controls Toolbar -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          
+          <!-- 1. Entity Type Switcher -->
+          <div class="md:col-span-3 space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 block">סוג השוואה:</label>
+            <div class="flex rounded-lg border border-slate-200 bg-white p-1">
+              <button id="btnCompType-bodyName" class="btnCompType flex-1 py-1 text-xs font-bold rounded transition-colors bg-brand-600 text-white shadow-xs" data-type="bodyName">גופים</button>
+              <button id="btnCompType-rank" class="btnCompType flex-1 py-1 text-xs font-medium rounded transition-colors text-slate-600 hover:text-slate-900" data-type="rank">דירוגים</button>
+              <button id="btnCompType-system" class="btnCompType flex-1 py-1 text-xs font-medium rounded transition-colors text-slate-600 hover:text-slate-900" data-type="system">מערכות</button>
+            </div>
+          </div>
+
+          <!-- 2. Search & Add Dropdown -->
+          <div class="md:col-span-5 space-y-1.5">
+            <label id="lblCompSearch" class="text-xs font-bold text-slate-700 block">הוסף גופים להשוואה:</label>
+            <div class="relative">
+              <input type="text" id="inputCompSearch" placeholder="🔍 הקלד לחיפוש והוספה (למשל איכילוב, הדסה...)" 
+                     class="w-full h-9 px-3 text-xs bg-white border border-slate-200 rounded-lg shadow-xs focus:outline-none focus:border-brand-500">
+              <div id="dropdownCompResults" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-56 overflow-y-auto divide-y divide-slate-100"></div>
+            </div>
+          </div>
+
+          <!-- 3. Year Range Selector -->
+          <div class="md:col-span-4 space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 block">טווח שנים להשוואה:</label>
+            <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1 flex-1">
+                <span class="text-xs text-slate-500">מ-</span>
+                <select id="selectCompFromYear" class="w-full h-9 px-2 text-xs font-bold bg-white border border-slate-200 rounded-lg shadow-xs focus:outline-none"></select>
+              </div>
+              <div class="flex items-center gap-1 flex-1">
+                <span class="text-xs text-slate-500">עד</span>
+                <select id="selectCompToYear" class="w-full h-9 px-2 text-xs font-bold bg-white border border-slate-200 rounded-lg shadow-xs focus:outline-none"></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Metric Selector Buttons & Chart Type -->
+          <div class="md:col-span-12 flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-xs font-bold text-slate-700 ml-2">מדדים להשוואה (עד 2 במקביל):</span>
+              <button data-metric="gap" class="btnCompMetric px-3 py-1.5 text-xs font-bold rounded-lg transition-colors bg-brand-600 text-white shadow-xs">⚖️ פער שכר מגדרי %</button>
+              <button data-metric="avgMenWage" class="btnCompMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">👨 שכר ממוצע גברים</button>
+              <button data-metric="avgWomenWage" class="btnCompMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">👩 שכר ממוצע נשים</button>
+              <button data-metric="overallWage" class="btnCompMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">👥 שכר ממוצע כללי</button>
+              <button data-metric="womenPercent" class="btnCompMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">📊 % נשים מועסקות</button>
+              <button data-metric="totalEmployees" class="btnCompMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">🔢 סה"כ עובדים</button>
+            </div>
+
+            <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
+              <span class="text-xs font-semibold text-slate-500 px-1">תצוגה:</span>
+              <button id="btnChartTypeLine" class="btnChartType px-2.5 py-1 text-xs font-bold rounded bg-slate-100 text-slate-900 shadow-xs" data-chart="line">📈 קווים</button>
+              <button id="btnChartTypeBar" class="btnChartType px-2.5 py-1 text-xs font-medium rounded text-slate-600 hover:text-slate-900" data-chart="bar">📊 עמודות</button>
+            </div>
+          </div>
+
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm lg:col-span-3">
-          <div id="chartSlope" style="height: 350px;"></div>
+
+        <!-- Selected Entities Tags Container -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-600">ישויות נבחרות להשוואה:</span>
+            <button id="btnClearCompEntities" class="text-xs text-rose-600 hover:text-rose-800 font-semibold transition-colors">נקה הכל</button>
+          </div>
+          <div id="containerCompTags" class="flex flex-wrap gap-2 min-h-[36px] p-2 bg-slate-50/70 border border-slate-200 rounded-lg"></div>
+        </div>
+
+        <!-- Main Comparison Chart -->
+        <div class="relative bg-white rounded-xl border border-slate-100 p-2">
+          <div id="chartCompareTrends" style="height: 460px; width: 100%;"></div>
+        </div>
+
+        <!-- Comparison Summary Delta Table -->
+        <div class="space-y-2 pt-2">
+          <h4 class="text-sm font-bold text-slate-800">טבלת סיכום שינויים וקצב סגירת פערים בטווח השנים הנבחר</h4>
+          <div class="overflow-x-auto rounded-lg border border-slate-200">
+            <table id="tableCompDelta" class="w-full text-xs text-right">
+              <thead class="bg-slate-50 text-slate-600 uppercase border-b border-slate-200">
+                <tr>
+                  <th class="px-4 py-2.5 font-bold">שם הישות</th>
+                  <th id="thCompStartVal" class="px-4 py-2.5 font-bold text-center">ערך התחלתי</th>
+                  <th id="thCompEndVal" class="px-4 py-2.5 font-bold text-center">ערך סופי</th>
+                  <th class="px-4 py-2.5 font-bold text-center">שינוי נומינלי (Δ)</th>
+                  <th class="px-4 py-2.5 font-bold text-center">שיעור שינוי %</th>
+                  <th class="px-4 py-2.5 font-bold text-center">מגמה</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyCompDelta" class="divide-y divide-slate-100 bg-white"></tbody>
+            </table>
+          </div>
         </div>
       </section>
+
+      <!-- SECTION 2: CROSS-SECTOR TRAJECTORY -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-base font-bold text-slate-900">מסלול התפתחות פערי השכר לפי מערכות (2018–2024)</h3>
+        </div>
+        <p class="text-xs text-slate-500 mb-4">השוואת מגמות פער השכר בין מערכת הבריאות, חברות ממשלתיות, שלטון מקומי, ביטחון, ומשרדי ממשלה מול הממוצע הארצי</p>
+        <div id="chartTrajectory" style="height: 400px; width: 100%;"></div>
+      </div>
+
     </div>
 
     <!-- TAB 5: DIRECTORY / SEARCHABLE TABLE -->
     <div id="tab-directory" class="hidden space-y-6">
-      <div class="insight-panel rounded-xl border border-slate-200 p-5 flex items-center justify-between gap-4 shadow-sm flex-wrap">
+      <div class="bg-white rounded-xl border border-slate-200 p-5 flex items-center justify-between gap-4 shadow-sm flex-wrap">
         <div>
           <h3 class="text-base font-bold text-slate-800 mb-1">ספריית גופים ודירוגים — גילוי מלא סעיף 33א</h3>
           <p class="text-xs text-slate-500">חיפוש חופשי, מיון לפי עמודות וצפייה ברמות שכר ועלות העסקה לפי חוק יסודות התקציב</p>
@@ -480,6 +553,8 @@
     </div>
   </div>
 
+  <script src="scripts/data_bundle.js?v=25"></script>
+  <script src="scripts/tableau_benchmarks.js?v=25"></script>
   <script src="scripts/parser.js?v=25"></script>
   <script src="scripts/validator.js?v=25"></script>
   <script src="scripts/insights.js?v=25"></script>
