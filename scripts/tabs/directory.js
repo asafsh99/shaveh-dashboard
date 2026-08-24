@@ -61,7 +61,8 @@ window.TabDirectory = (function () {
         rank: m.rank,
         system: m.system,
         hc,
-        menPct: hc > 0 ? (m.menCount / hc) * 100 : 0,
+        menPct: DataValidator.computeComplementaryShares(m.menCount, m.womenCount, 1).menPct,
+        womenPct: DataValidator.computeComplementaryShares(m.menCount, m.womenCount, 1).womenPct,
         avgWage: avgW,
         employerCost: avgCost,
         gap

@@ -63,6 +63,36 @@ window.DataValidator = (function() {
   }
 
   /**
+   * Computes complementary gender percentage shares ensuring they sum to EXACTLY 100%
+   * and neither exceeds 100% or falls below 0%.
+   * @param {number} menCount
+   * @param {number} womenCount
+   * @param {number} [decimals=0] - Decimal places (0 for integers, 1 for 0.1 precision)
+   * @returns {{ menPct: number, womenPct: number, womenShare: number, menShare: number }}
+   */
+  function computeComplementaryShares(menCount, womenCount, decimals = 0) {
+    const m = Math.max(0, Number(menCount) || 0);
+    const w = Math.max(0, Number(womenCount) || 0);
+    const total = m + w;
+    if (total <= 0) {
+      return { menPct: 0, womenPct: 0, menShare: 0, womenShare: 0 };
+    }
+    
+    if (decimals === 0) {
+      const rawWomen = (w / total) * 100;
+      const womenPct = Math.min(100, Math.max(0, Math.round(rawWomen)));
+      const menPct = Math.max(0, 100 - womenPct);
+      return { menPct, womenPct, menShare: menPct, womenShare: womenPct };
+    } else {
+      const factor = Math.pow(10, decimals);
+      const rawWomen = (w / total) * 100;
+      const womenPct = Math.min(100, Math.max(0, Math.round(rawWomen * factor) / factor));
+      const menPct = Math.max(0, +(100 - womenPct).toFixed(decimals));
+      return { menPct, womenPct, menShare: menPct, womenShare: womenPct };
+    }
+  }
+
+  /**
    * Calculates Weighted Average Men's Wage
    * Formula: Sum(AvgWage_i * Count_i) / Sum(Count_i)
    * @param {Array<Object>} records 
@@ -368,6 +398,7 @@ window.DataValidator = (function() {
 
   return {
     calculateTotalEmployees,
+    computeComplementaryShares,
     calculateWeightedAverageMenWage,
     calculateWeightedAverageWomenWage,
     calculateOverallAverageWage,

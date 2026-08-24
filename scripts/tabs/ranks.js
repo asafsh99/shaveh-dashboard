@@ -65,7 +65,7 @@ window.TabRanks = (function () {
         const hc = sub.reduce((s, r) => s + (r.menCount || 0) + (r.womenCount || 0), 0);
         if (hc < minHc) return;
         const wc = sub.reduce((s, r) => s + (r.womenCount || 0), 0);
-        const wsPct = (wc / hc * 100);
+        const wsPct = DataValidator.computeComplementaryShares(Math.max(0, hc - wc), wc, 1).womenPct;
         
         const g = DataValidator.calculateAggregateGap(sub);
         const mw = DataValidator.calculateWeightedAverageMenWage(sub);
@@ -92,7 +92,7 @@ window.TabRanks = (function () {
         const hc = sub.reduce((s, r) => s + (r.menCount || 0) + (r.womenCount || 0), 0);
         if (hc < window.DataEngine.PRIVACY_THRESHOLD) return;
         const wc = sub.reduce((s, r) => s + (r.womenCount || 0), 0);
-        const wsPct = (wc / hc * 100);
+        const wsPct = DataValidator.computeComplementaryShares(Math.max(0, hc - wc), wc, 1).womenPct;
         
         const g = DataValidator.calculateAggregateGap(sub);
         const mw = DataValidator.calculateWeightedAverageMenWage(sub);

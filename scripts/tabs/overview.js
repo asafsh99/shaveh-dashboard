@@ -64,9 +64,10 @@ window.TabOverview = (function () {
     document.getElementById('kpiTotalEmployees').textContent = Math.round(v.totalEmployees).toLocaleString('he-IL');
     document.getElementById('kpiTotalRecords').textContent = `${v.totalRecords.toLocaleString('he-IL')} שורות נתונים`;
 
-    // Gender share
-    const ws = v.totalEmployees > 0 ? Math.round((v.totalWomen / v.totalEmployees) * 100) : 0;
-    const ms = v.totalEmployees > 0 ? (100 - ws) : 0;
+    // Gender share (complementary rounding, strictly <= 100%)
+    const shares = DataValidator.computeComplementaryShares(v.totalMen, v.totalWomen, 0);
+    const ws = shares.womenPct;
+    const ms = shares.menPct;
     
     document.getElementById('kpiWomenShare').textContent = ws + '% נשים';
     
@@ -692,13 +693,14 @@ window.TabOverview = (function () {
       const bmKey = `${m.key}_${year}`;
       if (groupKey === 'bodyName' && benchmarks[bmKey]) {
         const bm = benchmarks[bmKey];
+        const shares = DataValidator.computeComplementaryShares(bm.menCount, bm.womenCount, 1);
         return {
           key: m.key,
           hc: bm.totalEmployees,
           menCount: bm.menCount,
           womenCount: bm.womenCount,
-          menPct: (bm.menCount / bm.totalEmployees) * 100,
-          womenPct: (bm.womenCount / bm.totalEmployees) * 100,
+          menPct: shares.menPct,
+          womenPct: shares.womenPct,
           menWage: bm.avgMenWage,
           womenWage: bm.avgWomenWage,
           overallWage: bm.overallWage,
@@ -710,8 +712,9 @@ window.TabOverview = (function () {
       if (hc < T) return null;
       const menCount = Math.round(m.menCount);
       const womenCount = Math.round(m.womenCount);
-      const menPct  = hc > 0 ? (menCount / hc) * 100 : 0;
-      const womenPct = hc > 0 ? (womenCount / hc) * 100 : 0;
+      const shares = DataValidator.computeComplementaryShares(menCount, womenCount, 1);
+      const menPct  = shares.menPct;
+      const womenPct = shares.womenPct;
       const menWage   = m.menWageCount   > 0 ? Math.round(m.menWageSum   / m.menWageCount)   : null;
       const womenWage = m.womenWageCount > 0 ? Math.round(m.womenWageSum / m.womenWageCount) : null;
       // Prefer avgGrossRegular (Tableau FTE-weighted) for overall wage; fallback to headcount-weighted
@@ -800,8 +803,10 @@ window.TabOverview = (function () {
 
     // Reverse for bottom-to-top display (echarts inverse)
     const names    = top.map(d => d.key).reverse();
-    const menPcts  = top.map(d => +d.menPct.toFixed(1)).reverse();
-    const womenPcts = top.map(d => +d.womenPct.toFixed(1)).reverse();
+    // Compute integer complementary shares directly for stacked bar rendering (guarantees integer sum is 100%)
+    const intShares = top.map(d => DataValidator.computeComplementaryShares(d.menCount, d.womenCount, 0));
+    const womenPcts = intShares.map(s => s.womenPct).reverse();
+    const menPcts   = intShares.map(s => s.menPct).reverse();
     const womenWages = top.map(d => d.womenWage ? -(Math.round(d.womenWage)) : null).reverse();
     const menWages   = top.map(d => d.menWage   ?  Math.round(d.menWage)    : null).reverse();
 
@@ -864,8 +869,8 @@ window.TabOverview = (function () {
             `<div style="font-size:11px; color:#64748b; margin-top:2px;">סה"כ עובדים: <strong>${fmtCnt(d.hc)}</strong></div>` +
             `<div style="font-size:11px; color:#334155; margin-bottom:6px;">שכר ממוצע כללי: <strong>${overallWageText}</strong></div>` +
             `<div style="border-top:1px solid #e2e8f0; padding-top:5px; margin-top:4px; line-height:1.6;">` +
-              `<span style="color:#1D4ED8">■</span> <strong>גברים:</strong> ${fmtCnt(d.menCount)} עובדים · שכר: ${menWageText}<br>` +
-              `<span style="color:#DB2777">■</span> <strong>נשים:</strong> ${fmtCnt(d.womenCount)} עובדות · שכר: ${womenWageText}` +
+              `<span style="color:#1D4ED8">■</span> <strong>גברים:</strong> ${fmtCnt(d.menCount)} עובדים (${d.menPct.toFixed(1)}%) · שכר: ${menWageText}<br>` +
+              `<span style="color:#DB2777">■</span> <strong>נשים:</strong> ${fmtCnt(d.womenCount)} עובדות (${d.womenPct.toFixed(1)}%) · שכר: ${womenWageText}` +
             `</div>` +
             `<div style="border-top:1px solid #e2e8f0; padding-top:4px; margin-top:4px; font-size:11px; color:#334155;">` +
               `פער שכר מגדרי: <strong style="color:${d.gap > 0 ? '#e11d48' : '#059669'}">‪${gap}%‬</strong>` +
@@ -953,7 +958,7 @@ window.TabOverview = (function () {
           label: {
             show: true,
             position: 'inside',
-            formatter: p => p.value > 8 ? p.value.toFixed(0) + '%' : '',
+            formatter: p => p.value > 8 ? p.value + '%' : '',
             fontFamily: 'Heebo', fontSize: 10, color: '#fff', fontWeight: 700
           },
           barMaxWidth: 26,
@@ -971,7 +976,7 @@ window.TabOverview = (function () {
           label: {
             show: true,
             position: 'inside',
-            formatter: p => p.value > 8 ? p.value.toFixed(0) + '%' : '',
+            formatter: p => p.value > 8 ? p.value + '%' : '',
             fontFamily: 'Heebo', fontSize: 10, color: '#fff', fontWeight: 700
           },
           barMaxWidth: 26,
