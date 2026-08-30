@@ -663,9 +663,9 @@ window.TabOverview = (function () {
         splitLine: { lineStyle: { color: COLORS.gridLine } }
       },
       series: [
-        { name: 'ברוטו שוטף', type: 'bar', stack: 'total', data: data.map(d => d.gross), itemStyle: { color: '#1e3a8a' } },
-        { name: 'תוספת למס', type: 'bar', stack: 'total', data: data.map(d => d.taxAdd), itemStyle: { color: '#d97706' } },
-        { name: 'הפרשות מעסיק', type: 'bar', stack: 'total', data: data.map(d => d.costAdd), itemStyle: { color: '#1D4ED8' } }
+        { name: 'ברוטו שוטף', type: 'bar', stack: 'total', data: data.map(d => d.gross), itemStyle: { color: '#334155' } },
+        { name: 'תוספת למס', type: 'bar', stack: 'total', data: data.map(d => d.taxAdd), itemStyle: { color: '#F59E0B' } },
+        { name: 'הפרשות מעסיק', type: 'bar', stack: 'total', data: data.map(d => d.costAdd), itemStyle: { color: '#14B8A6' } }
       ]
     });
   }
