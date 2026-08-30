@@ -8,7 +8,6 @@ window.TabQuality = (function () {
 
   let stackedChart = null;
   let dumbbellChart = null;
-  let treemapChart = null;
   let bubbleChart = null;
 
   const COLORS = {
@@ -250,7 +249,7 @@ window.TabQuality = (function () {
     Object.keys(ovBodyMap).forEach(body => {
       const ov = ovBodyMap[body];
       const mwHc = mwBodyMap[body] || 0;
-      if (ov.hc < 5) return;
+      if (ov.hc < DataEngine.PRIVACY_THRESHOLD) return;
 
       const avgWage = ov.wageHc > 0 ? (ov.wageSum / ov.wageHc) : 0;
       if (avgWage === 0) return; // Don't plot bodies with no wage data

@@ -1,0 +1,2401 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>סטודיו החלקה והשוואת שכר | מגדר, דירוגים וקבוצות</title>
+  
+  <!-- Google Fonts: Heebo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Heebo', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              600: '#334155',
+              700: '#1e293b',
+              800: '#0f172a',
+              900: '#020617'
+            },
+            men: '#2563eb',     // Royal Blue
+            women: '#db2777',   // Pink / Magenta
+            emerald: { 500: '#10b981', 600: '#059669' },
+            violet: { 500: '#8b5cf6', 600: '#7c3aed' },
+            amber: { 500: '#f59e0b', 600: '#d97706' },
+            cyan: { 500: '#06b6d4', 600: '#0891b2' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- ECharts & Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+    }
+
+    .series-card {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .series-card:hover {
+      border-color: #cbd5e1;
+      transform: translateY(-1px);
+    }
+
+    input[type=range] {
+      accent-color: #2563eb;
+    }
+
+    /* Custom select styling */
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: left 0.75rem center;
+      padding-left: 2.2rem;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased selection:bg-blue-100 selection:text-blue-900">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-[1680px] mx-auto px-4 sm:px-6">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo & Title -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+            <i data-lucide="waves" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                סטודיו החלקה והשוואת שכר
+              </h1>
+            </div>
+            <p class="text-xs text-slate-500 font-normal">
+              השוואת התפלגויות שכר רציפות ומדויקות בין דירוגים, מגדר, קבוצות מגזריות ושנים (2018–2025)
+            </p>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <a href="index.html" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+            דשבורד ראשי
+          </a>
+          <button id="btnExportImage" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 shadow-sm transition-colors">
+            <i data-lucide="download" class="w-3.5 h-3.5 text-slate-500"></i>
+            ייצוא גרף (PNG)
+          </button>
+          <button id="btnExportCSV" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium shadow-sm shadow-blue-600/20 transition-colors">
+            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+            ייצוא נתונים (CSV)
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Presets Quick Bar -->
+  <div class="bg-slate-100/80 border-b border-slate-200 py-2.5">
+    <div class="max-w-[1680px] mx-auto px-4 sm:px-6 flex items-center justify-between gap-4 overflow-x-auto">
+      <div class="flex items-center gap-2 shrink-0 overflow-x-auto">
+        <span class="text-xs font-bold text-slate-500 flex items-center gap-1 shrink-0">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i>
+          השוואות מהירות (Presets):
+        </span>
+        <div id="presetButtonsContainer" class="flex items-center gap-2">
+          <!-- Populated dynamically by JS - the preset list depends on the דירוג/גוף toggle -->
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 font-medium shrink-0">
+        <span id="totalRecordsBadge" class="bg-white border border-slate-200 px-2 py-0.5 rounded-full font-bold text-slate-700">0</span>
+        רשומות במאגר
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-[1680px] mx-auto px-4 sm:px-6 py-5">
+
+    <!-- Methodology Note -->
+    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm mb-5">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h3 class="text-base font-bold text-slate-800 mb-1">מתודולוגיית החישוב — סטודיו ההחלקה</h3>
+          <p class="text-xs text-slate-500 max-w-3xl leading-relaxed">
+            עקומות ההתפלגות מבוססות על היסטוגרמת שכר אמיתית ברמת שנה × דירוג × קבוצה × מגדר × מדרגת-שכר (2018-2025), עם 3 שיטות החלקה שונות להצגה חזותית ואפשרות להשוות אותה סדרה בין שנים שונות.
+          </p>
+        </div>
+        <button id="btnSmoothingMethodology" class="shrink-0 h-8 px-3 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors">
+          ⓘ מתודולוגיית החישוב
+        </button>
+      </div>
+      <div id="smoothingMethodologyPanel" class="hidden mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600 leading-relaxed space-y-1.5">
+        <p><strong>שני מקורות דאטה - דירוגים מול גופים (הבורר הגלובלי "דירוג/גוף" מעל רשימת הסדרות):</strong> הבחירה בין דירוג לגוף היא <strong>גלובלית לכל הסדרות יחד, לא לכל סדרה בנפרד</strong> — כי מדובר בשתי רמות דיוק שונות לגמרי של אותה שאלה, ולכן לא ניתן לשלב דירוג וגוף על אותו גרף (החלפת הבורר מאפסת את כל הסדרות לברירת המחדל של הסוג החדש).</p>
+        <ul class="list-disc pr-5 space-y-1">
+          <li><strong>דירוג (עקומה רציפה):</strong> קובץ <code class="bg-slate-100 px-1 rounded">data/DOCH1_DENSITY_FINAL.xlsx</code> — היסטוגרמת שכר אמיתית (bin-level) לשנים <strong>2018–2025</strong>, ברמת שנה × דירוג × קבוצה מגזרית × מגדר × מדרגת שכר מדויקת (כ-37,000 שורות לאחר סינון פרטיות, 82 דירוגים). נטען ע"י <code class="bg-slate-100 px-1 rounded">scripts/dev/build_smoothing_bundle.py</code>. הגרף מוצג כעקומת קו רציפה עם אפשרויות החלקה (ראו בהמשך).</li>
+          <li><strong>גוף (11 רצועות בדידות):</strong> קובץ <code class="bg-slate-100 px-1 rounded">data/שכר דיגיטלי מגויר2018-2025- עדי ואסף (2).xlsx</code>, גיליון <strong>"גוף"</strong> — אותן 8 שנים, מאות גופים, אבל <strong>ברמת דיוק נמוכה משמעותית</strong>: המקור מדווח לכל גוף רק לאיזו מ-11 רצועות שכר קבועות (עד 8,000 ₪, 8-12 אלף, ... מעל 44,000 ₪) שייכים עובדיו, לא מדרגת שכר מדויקת. <strong>אין כאן רצף אמיתי להחליק</strong> — לכן במצב "גוף" הגרף עובר אוטומטית לתצוגת עמודות בדידות (עמודה אחת לכל רצועה, לא קו), ופאנל אלגוריתמי ההחלקה מושבת כליל. נטען ע"י <code class="bg-slate-100 px-1 rounded">scripts/dev/build_smoothing_body_bundle.py</code>.</li>
+        </ul>
+        <p><strong>ההבדלים בין שני המצבים לא נעצרים בגרף:</strong> שדה בחירת הישות בכרטיס הסדרה משתנה גם הוא — במצב "דירוג" זו רשימה נפתחת רגילה (יש רק כ-80 דירוגים, סבירה לגלילה); במצב "גוף" זהו <strong>תיבת חיפוש</strong> (הקלידו חלק משם הגוף לסינון) כי יש מאות גופים ורשימה נפתחת רגילה לא הייתה שימושית. גם רשימת ה-"השוואות מהירות" (Presets) מתחלפת אוטומטית לפי המצב הנבחר — סט presets לדירוגים וסט נפרד לגופים (למשל השוואת עיריות גדולות, אוניברסיטאות, או בנק ישראל מול מפעל הפיס) — כי דוגמאות משמעותיות לדירוג (כמו "מהנדסים") לא רלוונטיות לגופים ולהפך.</p>
+        <p>שני המקורות משתפים בדיוק את אותם שמות עמודות לרבדי שכר/עלות/משרות (ולכן אותה מתודולוגיית חישוב), רק ברמת פירוט שונה של השכר עצמו. הקבצים נטענים בנפרד ומעודכנים כל אחד בהרצה חוזרת של הסקריפט המתאים אם המקור שלו מתעדכן.</p>
+        <p><strong>שני מדדי שכר ממוצע שונים - אל תבלבלו ביניהם:</strong> כרטיסי ה-KPI מציגים <strong>שני</strong> מספרי "שכר ממוצע" לכל סדרה, ממקורות שונים: "שכר ממוצע משוקלל" מוערך מתוך <em>מרכזי הבינים</em> של ההיסטוגרמה (קירוב, כי כל בין מייצג טווח שכר ולא נקודה מדויקת) — הוא זה שמניע את העקומה בגרף. "שכר ממוצע מדויק (רבדים)" מחושב <code class="bg-slate-100 px-1 rounded">sumGross / posMonths</code> (סך ברוטו שוטף והפרשים חלקי חודשי-משרה, בדיוק אותה נוסחה כמו טאב "שכר דיגיטלי") — זהו המספר המדויק והמומלץ להשוואות שכר עצמן. שני המספרים בדרך כלל קרובים אך לא זהים.</p>
+        <p><strong>השוואה בין שנים:</strong> לכל סדרה (בפאנל "סדרות להשוואה") יש בורר שנה עצמאי משלה — ניתן להציב, למשל, "אחים ואחיות - נשים (2018)" מול "אחים ואחיות - נשים (2024)" באותו גרף. בורר השנה שליד הכותרת הראשית קובע רק את שנת ברירת המחדל לסדרה חדשה שתיווסף (או ללחיצה על preset) — הוא <strong>אינו</strong> משנה את השנה של סדרות קיימות, בדיוק כדי לא לשבור השוואה בין-שנתית שכבר הגדרתם. רשימות הדירוג-או-גוף והקבוצה הזמינות בכל כרטיס סדרה תלויות בשנה שנבחרה באותו כרטיס ובסוג הישות הגלובלי (דירוג/גוף), כי לא כל דירוג/גוף/קבוצה דווחו בכל שנה.</p>
+        <p><strong>פרטיות:</strong> שורות עם 5 עובדים או פחות (<code class="bg-slate-100 px-1 rounded">COUNT_OVEDIM ≤ 5</code>) מוסרות באופן גורף על ידי סקריפט הבנייה, כמו בכל שאר הדשבורד — בקובץ הזה (בשונה מקובץ המקור הקודם) הסינון הזה הכרחי, כי חלק מהשורות המקוריות מדווחות ברמת 1-4 עובדים. <strong>שימו לב:</strong> מדרגות שכר "חסרות" בגרף (למשל דילוג בין 8,500₪ ל-10,500₪) נובעות לרוב מכך שהתא המקורי הוסתר לפרטיות — לא בהכרח שהיו שם אפס עובדים בפועל.</p>
+        <p class="text-amber-700"><strong>זהירות בהשוואה בין שנים מוקדמות למאוחרות:</strong> מספר הדירוגים והרשומות המדווחים קופץ משמעותית בין 2019 (כ-2,400 רשומות, 60 דירוגים) ל-2020 (כ-5,100 רשומות, 73 דירוגים) — קפיצה כזו נובעת ככל הנראה משיפור כיסוי הדיווח ולא מגידול אמיתי בכוח האדם, כפי שנצפה גם בקובץ "שכר דיגיטלי". כמו כן 2025 חלקית (פחות רשומות מ-2024) כי לא כל החודשים דווחו עדיין. יש להתייחס בזהירות להשוואת מגמה בין 2018-2019 לשנים המאוחרות יותר.</p>
+        <p><strong>שכר ממוצע/חציוני/שכיח משוקלל (כרטיסי KPI):</strong> מחושבים מהבינים הגולמיים בזמן אמת — ממוצע משוקלל לפי כמות עובדים בכל בין, חציון = הבין הראשון שבו הצטברות העובדים חוצה 50%, שכיחות = הבין עם הכי הרבה עובדים.</p>
+        <p><strong>אלגוריתמי החלקה (בורר בפאנל השמאלי):</strong></p>
+        <ul class="list-disc pr-5 space-y-1">
+          <li><strong>ספליין:</strong> הנתונים הגולמיים ללא כל שינוי מספרי — ה"החלקה" היא ויזואלית בלבד, קימור עקומה סטנדרטי של ECharts דרך הנקודות המקוריות (העוצמה בסליידר קובעת את מתיחות העקומה).</li>
+          <li><strong>ממוצע נע משוקלל:</strong> ממוצע נע בעל משקל גאוסי סביב כל מדרגת שכר, לפי <em>מספר מדרגות</em> בסליידר — לא לפי מרחק ₪ קבוע. מכיוון שרוחב המדרגות בקובץ אינו אחיד, אותו "רוחב חלון" עשוי לכסות טווח ₪ שונה באזורים צפופים/דלילים בגרף.</li>
+          <li><strong>KDE (צפיפות גאוסית):</strong> אמידת צפיפות קרנל גאוסי אמיתית עם רוחב פס (bandwidth) ב-₪ הנקבע בסליידר. <strong>שימו לב:</strong> ערכי ה-Y מנורמלים בקבוע קבוע (×1,000) כדי להיראות בסקאלה דומה לכמות עובדים גולמית — זהו קירוב חזותי בלבד, לא שימור מדויק של סך העובדים (השטח מתחת לעקומה אינו שווה בהכרח לסך העובדים בפועל).</li>
+          <li><strong>נתונים גולמיים (Bins):</strong> ההיסטוגרמה המקורית ללא שום עיבוד.</li>
+        </ul>
+        <p><strong>רבדי שכר לפי סדרה (הגרף התחתון):</strong> אותה מתודולוגיה בדיוק כמו טאב "שכר דיגיטלי" — "יסוד ותוספות" = <code class="bg-slate-100 px-1 rounded">total_sachar_mshulav + total_salary_additions</code>; "עבודה נוספת" = <code class="bg-slate-100 px-1 rounded">total_additional_work</code>; "החזר הוצאות" = <code class="bg-slate-100 px-1 rounded">total_expense_refund</code>; "תשלומים והפרשים" = <code class="bg-slate-100 px-1 rounded">total_other_payments</code>. כל רובד הוא אחוז מתוך סכום ארבעת הרבדים יחד (מסתכמים תמיד ל-100%) — לא אחוז מהברוטו הכולל, ולכן לא ניתן להשוות ישירות בין "שכר ממוצע מדויק" ל"רבדי שכר" ביחידות ₪. ההבדל בין הטאב הזה לטאב "שכר דיגיטלי": שם הרבדים מחושבים פעם אחת ברמת דירוג מצרפית; כאן הם מחושבים בזמן אמת לכל סדרה מותאמת-אישית (כל שילוב רמה/קבוצה/מגדר/שנה) על ידי סכימה על פני הבינים הרלוונטיים.</p>
+        <p class="text-amber-700"><strong>מעמד הכלי:</strong> זהו דף עצמאי לניתוח וחקירה, שאינו מקושר עדיין מהדשבורד הראשי (<code class="bg-slate-100 px-1 rounded">index.html</code>) ואינו חלק מהניווט הרגיל — נמצא כרגע בפיתוח נפרד.</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      
+      <!-- Left Column: Controls & Series Builder (xl:col-span-4) -->
+      <div class="xl:col-span-4 space-y-5">
+        
+        <!-- Comparison Series Box -->
+        <div class="glass-panel rounded-2xl p-4 shadow-sm">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                <i data-lucide="layers" class="w-4 h-4"></i>
+              </div>
+              <h2 class="text-sm font-bold text-slate-800">סדרות להשוואה</h2>
+              <span id="seriesCountBadge" class="text-xs px-2 py-0.5 rounded-full bg-slate-100 font-semibold text-slate-600">2 / 6</span>
+            </div>
+            <button id="btnAddSeries" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              הוסף סדרה
+            </button>
+          </div>
+
+          <!-- Global entity-type toggle: applies to ALL series at once - ranks (continuous
+               histogram) and bodies (11 discrete bands) can't be mixed in one chart, so
+               switching this resets every series to the wildcard for the new type. -->
+          <div class="grid grid-cols-2 gap-1.5 mb-3 bg-slate-100 p-1 rounded-xl text-xs">
+            <button id="btnEntityTypeRank" class="entity-type-global-btn py-1.5 px-2 rounded-lg font-bold text-center transition" data-type="rank">דירוג (עקומה רציפה)</button>
+            <button id="btnEntityTypeBody" class="entity-type-global-btn py-1.5 px-2 rounded-lg font-bold text-center transition" data-type="body">גוף (11 רצועות בדידות)</button>
+          </div>
+
+          <!-- Series List Container -->
+          <div id="seriesList" class="space-y-3 max-h-[460px] overflow-y-auto pr-1">
+            <!-- Rendered dynamically by JS -->
+          </div>
+        </div>
+
+        <!-- Smoothing & Curve Controls -->
+        <div class="glass-panel rounded-2xl p-4 shadow-sm">
+          <div class="flex items-center gap-2 pb-3 mb-3 border-b border-slate-100">
+            <div class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+              <i data-lucide="sliders" class="w-4 h-4"></i>
+            </div>
+            <h2 class="text-sm font-bold text-slate-800">הגדרות החלקה וצירים</h2>
+          </div>
+
+          <div class="space-y-4 text-xs">
+            
+            <!-- Metric Y Axis Toggle -->
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1.5">ציר Y (מדד כמות):</label>
+              <div class="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
+                <button class="metric-btn active py-1.5 px-2 rounded-lg font-bold text-center transition bg-white text-blue-700 shadow-sm" data-metric="COUNT_OVEDIM">
+                  כמות עובדים
+                </button>
+                <button class="metric-btn py-1.5 px-2 rounded-lg font-medium text-center text-slate-600 hover:text-slate-900 transition" data-metric="PCT_OVEDIM">
+                  אחוז עובדים (%)
+                </button>
+                <button class="metric-btn py-1.5 px-2 rounded-lg font-medium text-center text-slate-600 hover:text-slate-900 transition" data-metric="TOTAL_MISROT">
+                  היקף משרות
+                </button>
+              </div>
+            </div>
+
+            <!-- Smoothing Algorithm (rank mode only - bodies only have 11 discrete bands,
+                 so there's nothing to smooth; the chart renders as discrete bars instead) -->
+            <p id="smoothNotAvailableNote" class="hidden text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+              לא זמין במצב "גוף" — יש רק 11 רצועות שכר בדידות, ללא רצף להחליק. הגרף מוצג כעמודות בדידות לפי רצועה.
+            </p>
+            <div id="smoothAlgorithmSection">
+              <label class="block font-semibold text-slate-700 mb-1.5">אלגוריתם החלקה:</label>
+              <div class="grid grid-cols-2 gap-1.5">
+                <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer">
+                  <input type="radio" name="smoothType" value="spline" checked class="text-blue-600 focus:ring-blue-500">
+                  <span class="font-medium text-slate-800">ספליין (Spline)</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer">
+                  <input type="radio" name="smoothType" value="kde" class="text-blue-600 focus:ring-blue-500">
+                  <span class="font-medium text-slate-800">KDE (צפיפות גאוסית)</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer">
+                  <input type="radio" name="smoothType" value="ma" class="text-blue-600 focus:ring-blue-500">
+                  <span class="font-medium text-slate-800">ממוצע נע משוקלל</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer">
+                  <input type="radio" name="smoothType" value="raw" class="text-blue-600 focus:ring-blue-500">
+                  <span class="font-medium text-slate-800">נתונים גולמיים (Bins)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Smooth Intensity Slider -->
+            <div id="smoothSliderContainer">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-semibold text-slate-700">עוצמת החלקה / רוחב חלון:</span>
+                <span id="smoothParamVal" class="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">0.45</span>
+              </div>
+              <input type="range" id="smoothIntensitySlider" min="0.1" max="0.9" step="0.05" value="0.45" class="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                <span>חד ומפורט</span>
+                <span>מאוזן</span>
+                <span>חלק ועגול</span>
+              </div>
+            </div>
+
+            <!-- Visual Styling Options -->
+            <div class="pt-2 border-t border-slate-100 grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-medium text-slate-600">שקיפות מילוי:</span>
+                  <span id="opacityVal" class="font-bold text-slate-700">25%</span>
+                </div>
+                <input type="range" id="areaOpacitySlider" min="0" max="70" step="5" value="25" class="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-medium text-slate-600">עובי קו:</span>
+                  <span id="lineWidthVal" class="font-bold text-slate-700">3px</span>
+                </div>
+                <input type="range" id="lineWidthSlider" min="1" max="6" step="1" value="3" class="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+              </div>
+            </div>
+
+            <!-- Reference Lines & Toggles -->
+            <div class="pt-2 border-t border-slate-100 space-y-2">
+              <label class="flex items-center justify-between cursor-pointer">
+                <span class="text-slate-700 font-medium">הצג קווי ממוצע וחציון על הגרף</span>
+                <input type="checkbox" id="chkShowStatsLines" checked class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4">
+              </label>
+              <label class="flex items-center justify-between cursor-pointer">
+                <span class="text-slate-700 font-medium">הצג נקודות שיא שכיחות (Mode Peaks)</span>
+                <input type="checkbox" id="chkShowPeaks" checked class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4">
+              </label>
+              <label class="flex items-center justify-between cursor-pointer">
+                <span class="text-slate-700 font-medium">הצג נקודות דגימה מקוריות (Scatter Bins)</span>
+                <input type="checkbox" id="chkShowRawPoints" class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4">
+              </label>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Chart & Analytics (xl:col-span-8) -->
+      <div class="xl:col-span-8 space-y-5">
+        
+        <!-- KPI Metric Cards Grid -->
+        <div id="kpiCardsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Dynamic KPI Cards will be populated here -->
+        </div>
+
+        <!-- Main Chart Card -->
+        <div class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm">
+          
+          <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-2 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                <i data-lucide="line-chart" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-slate-800">התפלגות שכר רציפה</h3>
+                <p class="text-xs text-slate-500">ציר אופקי (X): מדרגות שכר ברוטו (₪) | ציר אנכי (Y): <span id="yAxisLabelTxt">כמות עובדים</span></p>
+              </div>
+            </div>
+
+            <!-- Zoom & Range Helpers -->
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-400 font-medium">טווח שכר מהיר:</span>
+              <button class="range-preset-btn px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700" data-range="0,40000">עד 40k ₪</button>
+              <button class="range-preset-btn px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700" data-range="0,70000">עד 70k ₪</button>
+              <button class="range-preset-btn px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold" data-range="all">הכל (130k ₪)</button>
+              <button id="btnResetZoom" class="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="איפוס זום">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- EChart Container -->
+          <div class="relative w-full h-[520px]">
+            <div id="mainChart" class="w-full h-full"></div>
+            
+            <!-- Empty state overlay -->
+            <div id="chartEmptyOverlay" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6">
+              <i data-lucide="info" class="w-10 h-10 text-slate-300 mb-2"></i>
+              <p class="text-sm font-semibold text-slate-700">לא נבחרו סדרות פעילות או שאין נתונים לצירוף הנבחר</p>
+              <p class="text-xs text-slate-500 mt-1">אנא הוסף סדרה או בחר תרחיש השוואה מהיר למעלה</p>
+            </div>
+          </div>
+
+          <!-- Bottom Chart Info Bar -->
+          <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-3">
+            <div class="flex items-center gap-4">
+              <span class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span>גרור את סרגל הזום התחתון להתמקדות במקטעי שכר ספציפיים</span>
+              </span>
+              <span class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                <span>רחף מעל העקומה לצפייה בפרטי השכר והפער המדויק</span>
+              </span>
+            </div>
+            <div id="chartStatsSummary" class="font-medium text-slate-700">
+              <!-- Summary populated by JS -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Salary Layers Composition -->
+        <div class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm">
+          <div class="flex items-center gap-2 pb-3 mb-2 border-b border-slate-100">
+            <div class="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center font-bold">
+              <i data-lucide="layers-3" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-800">רבדי שכר לפי סדרה</h3>
+              <p class="text-xs text-slate-500">התפלגות ברוטו ל-4 רכיבים, לכל סדרה פעילה - אותה מתודולוגיה כמו טאב "שכר דיגיטלי"</p>
+            </div>
+          </div>
+          <div class="relative w-full h-[260px]">
+            <div id="chartLayers" class="w-full h-full"></div>
+            <div id="chartLayersEmptyOverlay" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6">
+              <p class="text-xs text-slate-500">אין נתוני רבדי שכר לסדרות הפעילות</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comparative Data Table (Collapsible) -->
+        <div class="glass-panel rounded-2xl p-4 shadow-sm">
+          <button id="btnToggleTable" class="w-full flex items-center justify-between text-right">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                <i data-lucide="table" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-800">טבלת השוואת נתונים מפורטת</h3>
+                <p class="text-xs text-slate-500">פירוט עובדים, אחוזים ושכר לפי מדרגות</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs font-semibold text-slate-600">
+              <span id="tableRowsCount">0 שורות</span>
+              <i data-lucide="chevron-down" id="tableChevron" class="w-4 h-4 transition-transform duration-200"></i>
+            </div>
+          </button>
+
+          <div id="tableContainer" class="hidden mt-4 pt-3 border-t border-slate-100 overflow-x-auto max-h-96">
+            <table class="w-full text-right text-xs text-slate-600">
+              <thead class="bg-slate-100/90 text-slate-800 font-bold sticky top-0">
+                <tr id="tableHeaderRow">
+                  <th class="py-2 px-3 rounded-r-lg">מדרגת שכר (₪)</th>
+                  <!-- Series dynamic headers -->
+                </tr>
+              </thead>
+              <tbody id="tableBody" class="divide-y divide-slate-100 font-mono text-[11px]">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Load processed data bundles: ranks (bin-level) + bodies (11-band level) -->
+  <script src="scripts/smoothing_data.js"></script>
+  <script src="scripts/smoothing_body_data.js"></script>
+
+  <!-- Main Application Logic -->
+  <script>
+    // Ranks (DOCH1_DENSITY_FINAL) report a real salary bin per row; bodies (the "גוף" sheet
+    // of the digital-salary file) only report one of these 11 fixed bands per row - there is
+    // no finer resolution available for bodies at the source. Each band gets a representative
+    // ₪ value so it can share the same numeric x-axis as the rank bins.
+    const BAND_MIDPOINTS = {
+      'קטן מ-8': 6000, '8-12': 10000, '12-16': 14000, '16-20': 18000, '20-24': 22000,
+      '24-28': 26000, '28-32': 30000, '32-36': 34000, '36-40': 38000, '40-44': 42000,
+      'גדול מ-44': 48000,
+    };
+
+    // Global App State
+    const AppState = {
+      rawData: window.SMOOTHING_RAW_DATA || [],         // rank-level, bin-level granularity
+      bodyRawData: window.SMOOTHING_BODY_DATA || [],    // body-level, 11-band granularity
+      availableYears: [],
+      defaultYear: null,   // year assigned to newly-added series / presets
+      // Entity type (rank vs body) is GLOBAL, not per-series: ranks have a real continuous
+      // salary histogram while bodies only have 11 fixed bands, so mixing them in one chart
+      // would be a misleading apples-to-oranges comparison. Switching this resets every
+      // series to the wildcard for the new type.
+      entityType: 'rank',
+      metaByTypeYear: { rank: new Map(), body: new Map() }, // entityType -> year -> { groups, entityNames, entityToGroups, groupToEntities }
+      genders: ['גברים', 'נשים', 'שניהם יחד'],
+
+      // Comparison Series (Max 6)
+      series: [
+        {
+          id: 'series-1',
+          name: 'אחים ואחיות - נשים',
+          entityType: 'rank',
+          group: 'מערכת הבריאות',
+          entityName: 'אחים ואחיות',
+          gender: 'נשים',
+          color: '#db2777', // Magenta/Pink
+          visible: true
+        },
+        {
+          id: 'series-2',
+          name: 'אחים ואחיות - גברים',
+          entityType: 'rank',
+          group: 'מערכת הבריאות',
+          entityName: 'אחים ואחיות',
+          gender: 'גברים',
+          color: '#2563eb', // Royal Blue
+          visible: true
+        }
+      ],
+
+      // Controls
+      metric: 'COUNT_OVEDIM', // 'COUNT_OVEDIM' | 'PCT_OVEDIM' | 'TOTAL_MISROT'
+      smoothType: 'spline',   // 'spline' | 'kde' | 'ma' | 'raw'
+      smoothParam: 0.45,
+      areaOpacity: 0.25,
+      lineWidth: 3,
+      showStatsLines: true,
+      showPeaks: true,
+      showRawPoints: false,
+      zoomRange: [0, 100], // %
+
+      // Distinct Colors for Series
+      colorPalette: [
+        '#db2777', // Magenta Pink
+        '#2563eb', // Royal Blue
+        '#10b981', // Emerald Green
+        '#8b5cf6', // Violet Purple
+        '#f59e0b', // Amber Orange
+        '#06b6d4', // Cyan Teal
+        '#ef4444', // Red
+        '#64748b'  // Slate Gray
+      ]
+    };
+
+    let chartInstance = null;
+    let layersChartInstance = null;
+
+    const LAYER_SEGMENTS = [
+      { key: 'base',    name: 'יסוד ותוספות',      color: '#334155' },
+      { key: 'extra',   name: 'עבודה נוספת',        color: '#F59E0B' },
+      { key: 'expense', name: 'החזר הוצאות',        color: '#14B8A6' },
+      { key: 'other',   name: 'תשלומים והפרשים',    color: '#8B5CF6' },
+    ];
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // Quick-comparison presets - the list shown depends on the global דירוג/גוף toggle,
+    // since the two vocabularies (rank names vs body names) are entirely different.
+    const RANK_PRESETS = [
+      { key: 'engineers',     emoji: '🛠️', label: 'גברים מול נשים - מהנדסים' },
+      { key: 'nurses',        emoji: '👩‍⚕️', label: 'גברים מול נשים - אחים ואחיות' },
+      { key: 'medical',       emoji: '🩺', label: 'גברים מול נשים - רופאים מומחים' },
+      { key: 'legal',         emoji: '⚖️', label: 'גברים מול נשים - משפטנים' },
+      { key: 'multi-ranks',   emoji: '🏢', label: '4 דירוגים מרכזיים' },
+      { key: 'admin-sectors', emoji: '🏛️', label: 'דירוג מנהלי לפי מגזרים' },
+      { key: 'overall',       emoji: '🌐', label: 'כלל המגזר הציבורי' },
+    ];
+    const BODY_PRESETS = [
+      { key: 'body-teachers-gender', emoji: '👩‍🏫', label: 'גברים מול נשים - משרד החינוך' },
+      { key: 'body-cities',          emoji: '🏙️', label: 'עיריות גדולות' },
+      { key: 'body-universities',    emoji: '🎓', label: 'אוניברסיטאות מרכזיות' },
+      { key: 'body-corps',           emoji: '🏦', label: 'בנק ישראל מול מפעל הפיס' },
+      { key: 'body-overall',         emoji: '🌐', label: 'כלל הגופים' },
+    ];
+
+    function renderPresetButtons() {
+      const container = document.getElementById('presetButtonsContainer');
+      const list = AppState.entityType === 'body' ? BODY_PRESETS : RANK_PRESETS;
+      container.innerHTML = list.map(p => `
+        <button class="preset-btn px-2.5 py-1 rounded-md text-xs font-medium bg-white border border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition whitespace-nowrap" data-preset="${p.key}">
+          ${p.emoji} ${escapeHtml(p.label)}
+        </button>
+      `).join('');
+      container.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+      });
+    }
+
+    // Initialize Application
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initData();
+      initChart();
+      initEvents();
+      renderSeriesControls();
+      updateDashboard();
+    });
+
+    const ENTITY_FIELD = { rank: 'DIRUG_MEUHAD', body: 'BODY_NAME' };
+    const ENTITY_WILDCARD = { rank: 'כל הדירוגים', body: 'כל הגופים' };
+
+    function rawDataFor(entityType) {
+      return entityType === 'body' ? AppState.bodyRawData : AppState.rawData;
+    }
+
+    // Extract metadata from raw data
+    function initData() {
+      if (!AppState.rawData || AppState.rawData.length === 0) {
+        console.error('No raw data found in SMOOTHING_RAW_DATA');
+        return;
+      }
+
+      document.getElementById('totalRecordsBadge').textContent =
+        (AppState.rawData.length + AppState.bodyRawData.length).toLocaleString('he-IL');
+
+      // Years are discovered from the data itself (SHANA field) - if either source file is
+      // ever replaced with a richer multi-year export, every year in it shows up here
+      // automatically, with no code changes.
+      const yearSet = new Set();
+      AppState.rawData.forEach(d => { if (d.SHANA) yearSet.add(Number(d.SHANA)); });
+      AppState.bodyRawData.forEach(d => { if (d.SHANA) yearSet.add(Number(d.SHANA)); });
+      AppState.availableYears = Array.from(yearSet).sort((a, b) => b - a); // newest first
+      AppState.defaultYear = AppState.availableYears.includes(2024) ? 2024 : AppState.availableYears[0];
+
+      buildAllYearsMeta();
+
+      // Each series carries its own year (so different series can be compared across
+      // years) - anything created before a year existed (initial defaults, or a series
+      // whose year no longer exists) falls back to the current default year.
+      AppState.series.forEach(s => {
+        if (!s.year || !AppState.availableYears.includes(s.year)) {
+          s.year = AppState.defaultYear;
+          s.name = `${s.name} (${s.year})`;
+        }
+      });
+    }
+
+    // Precompute, for every (entity type, year) pair, which groups/entities exist and how
+    // they cross-reference each other - used to drive the dependent group/entity dropdowns
+    // in each series card, scoped to THAT series' own type+year (needed for cross-year
+    // comparison, since the set of ranks/bodies reported can differ from year to year, and
+    // ranks/bodies are obviously entirely different vocabularies from each other).
+    function buildAllYearsMeta() {
+      ['rank', 'body'].forEach(entityType => {
+        const nameField = ENTITY_FIELD[entityType];
+        const data = rawDataFor(entityType);
+        const metaByYear = new Map();
+
+        AppState.availableYears.forEach(year => {
+          const groupSet = new Set();
+          const nameSet = new Set();
+          const entityToGroups = new Map();
+          const groupToEntities = new Map();
+
+          data.forEach(d => {
+            if (Number(d.SHANA) !== year) return;
+            const nm = d[nameField];
+            if (d.KVUTZA) groupSet.add(d.KVUTZA);
+            if (nm) nameSet.add(nm);
+            if (d.KVUTZA && nm) {
+              if (!entityToGroups.has(nm)) entityToGroups.set(nm, new Set());
+              entityToGroups.get(nm).add(d.KVUTZA);
+              if (!groupToEntities.has(d.KVUTZA)) groupToEntities.set(d.KVUTZA, new Set());
+              groupToEntities.get(d.KVUTZA).add(nm);
+            }
+          });
+
+          metaByYear.set(year, {
+            groups: ['כל הקבוצות', ...Array.from(groupSet).sort((a,b) => a.localeCompare('he'))],
+            entityNames: [ENTITY_WILDCARD[entityType], ...Array.from(nameSet).sort((a,b) => a.localeCompare('he'))],
+            entityToGroups,
+            groupToEntities
+          });
+        });
+
+        AppState.metaByTypeYear[entityType] = metaByYear;
+      });
+    }
+
+    // Groups selectable given a chosen entity (rank or body), within a specific type+year
+    function getAvailableGroups(entityName, year, entityType) {
+      const meta = AppState.metaByTypeYear[entityType].get(year);
+      if (!meta) return ['כל הקבוצות'];
+      if (!entityName || entityName === ENTITY_WILDCARD[entityType]) return meta.groups;
+      const valid = meta.entityToGroups.get(entityName) || new Set();
+      return ['כל הקבוצות', ...meta.groups.filter(g => g !== 'כל הקבוצות' && valid.has(g))];
+    }
+
+    // Ranks/bodies selectable given a chosen group, within a specific type+year
+    function getAvailableEntityNames(group, year, entityType) {
+      const meta = AppState.metaByTypeYear[entityType].get(year);
+      const wildcard = ENTITY_WILDCARD[entityType];
+      if (!meta) return [wildcard];
+      if (!group || group === 'כל הקבוצות') return meta.entityNames;
+      const valid = meta.groupToEntities.get(group) || new Set();
+      return [wildcard, ...meta.entityNames.filter(n => n !== wildcard && valid.has(n))];
+    }
+
+    // Initialize ECharts Instance
+    function initChart() {
+      const chartDom = document.getElementById('mainChart');
+      chartInstance = echarts.init(chartDom, null, { renderer: 'canvas' });
+
+      const layersDom = document.getElementById('chartLayers');
+      layersChartInstance = echarts.init(layersDom, null, { renderer: 'canvas' });
+
+      window.addEventListener('resize', () => {
+        if (chartInstance) chartInstance.resize();
+        if (layersChartInstance) layersChartInstance.resize();
+      });
+    }
+
+    // Setup UI Event Listeners
+    function initEvents() {
+      // Methodology panel toggle
+      document.getElementById('btnSmoothingMethodology').addEventListener('click', () => {
+        document.getElementById('smoothingMethodologyPanel').classList.toggle('hidden');
+      });
+
+      // Global entity-type toggle (rank vs body) - applies to every series at once. Ranks
+      // and bodies can't be mixed in one chart, so switching resets every series to the
+      // wildcard for the new type.
+      document.querySelectorAll('.entity-type-global-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (AppState.entityType === btn.dataset.type) return;
+          AppState.entityType = btn.dataset.type;
+          AppState.series.forEach(s => {
+            s.entityType = AppState.entityType;
+            s.entityName = ENTITY_WILDCARD[AppState.entityType];
+            s.group = 'כל הקבוצות';
+            autoUpdateSeriesName(s);
+          });
+          renderEntityTypeGlobalButtons();
+          updateSmoothingAvailability();
+          renderPresetButtons();
+          renderSeriesControls();
+          updateDashboard();
+        });
+      });
+      renderEntityTypeGlobalButtons();
+      updateSmoothingAvailability();
+      renderPresetButtons();
+
+      // Close any open entity-search dropdown (body mode) when clicking elsewhere
+      document.addEventListener('click', (e) => {
+        document.querySelectorAll('.entity-search-dropdown').forEach(dd => {
+          const input = document.querySelector(`.entity-search-input[data-id="${dd.dataset.id}"]`);
+          if (!dd.contains(e.target) && e.target !== input) dd.classList.add('hidden');
+        });
+      });
+
+      // Add Series button
+      document.getElementById('btnAddSeries').addEventListener('click', () => {
+        if (AppState.series.length >= 6) {
+          alert('ניתן להציג עד 6 סדרות במקביל להשוואה ברורה ומדויקת.');
+          return;
+        }
+        const newColor = AppState.colorPalette[AppState.series.length % AppState.colorPalette.length];
+        // Start from the previous series' year+rank rather than a blank 'all' series -
+        // usually you're adding a series to tweak one thing (e.g. compare genders or
+        // years), not build a whole new filter from scratch.
+        const prevSeries = AppState.series[AppState.series.length - 1];
+        const entityType = AppState.entityType;
+        const newSeries = {
+          id: 'series-' + Date.now(),
+          entityType,
+          group: 'כל הקבוצות',
+          entityName: prevSeries ? prevSeries.entityName : ENTITY_WILDCARD[entityType],
+          gender: 'שניהם יחד',
+          year: prevSeries ? prevSeries.year : AppState.defaultYear,
+          color: newColor,
+          visible: true
+        };
+        autoUpdateSeriesName(newSeries);
+        AppState.series.push(newSeries);
+        renderSeriesControls();
+        updateDashboard();
+      });
+
+      // Metric toggle buttons
+      document.querySelectorAll('.metric-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.metric-btn').forEach(b => {
+            b.classList.remove('active', 'bg-white', 'text-blue-700', 'shadow-sm');
+            b.classList.add('text-slate-600');
+          });
+          btn.classList.add('active', 'bg-white', 'text-blue-700', 'shadow-sm');
+          btn.classList.remove('text-slate-600');
+          AppState.metric = btn.dataset.metric;
+          
+          // Update label
+          const labels = {
+            'COUNT_OVEDIM': 'כמות עובדים',
+            'PCT_OVEDIM': 'אחוז עובדים (%)',
+            'TOTAL_MISROT': 'היקף משרות'
+          };
+          document.getElementById('yAxisLabelTxt').textContent = labels[AppState.metric];
+          updateDashboard();
+        });
+      });
+
+      // Smoothing Algorithm Radios
+      document.querySelectorAll('input[name="smoothType"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          AppState.smoothType = e.target.value;
+          updateSmoothingSliderConfig();
+          updateDashboard();
+        });
+      });
+
+      // Smooth intensity slider
+      const smoothSlider = document.getElementById('smoothIntensitySlider');
+      smoothSlider.addEventListener('input', (e) => {
+        AppState.smoothParam = parseFloat(e.target.value);
+        document.getElementById('smoothParamVal').textContent = AppState.smoothParam.toFixed(2);
+        updateDashboard();
+      });
+
+      // Area Opacity Slider
+      const opacitySlider = document.getElementById('areaOpacitySlider');
+      opacitySlider.addEventListener('input', (e) => {
+        AppState.areaOpacity = parseInt(e.target.value) / 100;
+        document.getElementById('opacityVal').textContent = e.target.value + '%';
+        updateDashboard();
+      });
+
+      // Line Width Slider
+      const widthSlider = document.getElementById('lineWidthSlider');
+      widthSlider.addEventListener('input', (e) => {
+        AppState.lineWidth = parseInt(e.target.value);
+        document.getElementById('lineWidthVal').textContent = e.target.value + 'px';
+        updateDashboard();
+      });
+
+      // Reference Toggles
+      document.getElementById('chkShowStatsLines').addEventListener('change', (e) => {
+        AppState.showStatsLines = e.target.checked;
+        updateDashboard();
+      });
+      document.getElementById('chkShowPeaks').addEventListener('change', (e) => {
+        AppState.showPeaks = e.target.checked;
+        updateDashboard();
+      });
+      document.getElementById('chkShowRawPoints').addEventListener('change', (e) => {
+        AppState.showRawPoints = e.target.checked;
+        updateDashboard();
+      });
+
+      // Quick Zoom Range Buttons
+      document.querySelectorAll('.range-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const range = btn.dataset.range;
+          if (range === 'all') {
+            AppState.zoomRange = [0, 100];
+          } else {
+            const [minS, maxS] = range.split(',').map(Number);
+            const maxPct = Math.min(100, Math.round((maxS / 130000) * 100));
+            AppState.zoomRange = [0, maxPct];
+          }
+          if (chartInstance) {
+            chartInstance.dispatchAction({
+              type: 'dataZoom',
+              start: AppState.zoomRange[0],
+              end: AppState.zoomRange[1]
+            });
+          }
+        });
+      });
+
+      document.getElementById('btnResetZoom').addEventListener('click', () => {
+        AppState.zoomRange = [0, 100];
+        if (chartInstance) {
+          chartInstance.dispatchAction({
+            type: 'dataZoom',
+            start: 0,
+            end: 100
+          });
+        }
+      });
+
+      // Export Actions
+      document.getElementById('btnExportImage').addEventListener('click', () => {
+        if (!chartInstance) return;
+        const url = chartInstance.getDataURL({
+          type: 'png',
+          pixelRatio: 2,
+          backgroundColor: '#ffffff'
+        });
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `התפלגות_שכר_${new Date().toISOString().slice(0,10)}.png`;
+        a.click();
+      });
+
+      document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
+
+      // Collapsible Table
+      document.getElementById('btnToggleTable').addEventListener('click', () => {
+        const container = document.getElementById('tableContainer');
+        const chevron = document.getElementById('tableChevron');
+        const isHidden = container.classList.contains('hidden');
+        if (isHidden) {
+          container.classList.remove('hidden');
+          chevron.style.transform = 'rotate(180deg)';
+        } else {
+          container.classList.add('hidden');
+          chevron.style.transform = 'rotate(0deg)';
+        }
+      });
+    }
+
+    // Configure slider based on chosen algorithm
+    function updateSmoothingSliderConfig() {
+      const slider = document.getElementById('smoothIntensitySlider');
+      const valLabel = document.getElementById('smoothParamVal');
+      const container = document.getElementById('smoothSliderContainer');
+
+      if (AppState.smoothType === 'spline') {
+        container.style.opacity = '1';
+        slider.disabled = false;
+        slider.min = '0.1';
+        slider.max = '0.9';
+        slider.step = '0.05';
+        AppState.smoothParam = 0.45;
+        slider.value = '0.45';
+        valLabel.textContent = '0.45';
+      } else if (AppState.smoothType === 'kde') {
+        container.style.opacity = '1';
+        slider.disabled = false;
+        slider.min = '1000';
+        slider.max = '8000';
+        slider.step = '500';
+        AppState.smoothParam = 3000;
+        slider.value = '3000';
+        valLabel.textContent = '3,000 ₪';
+      } else if (AppState.smoothType === 'ma') {
+        container.style.opacity = '1';
+        slider.disabled = false;
+        slider.min = '2';
+        slider.max = '10';
+        slider.step = '1';
+        AppState.smoothParam = 4;
+        slider.value = '4';
+        valLabel.textContent = '4 מדרגות';
+      } else {
+        container.style.opacity = '0.4';
+        slider.disabled = true;
+        valLabel.textContent = 'ללא';
+      }
+    }
+
+    // Style the global rank/body toggle buttons to reflect AppState.entityType
+    function renderEntityTypeGlobalButtons() {
+      const isRank = AppState.entityType === 'rank';
+      const rankBtn = document.getElementById('btnEntityTypeRank');
+      const bodyBtn = document.getElementById('btnEntityTypeBody');
+      rankBtn.classList.toggle('bg-white', isRank);
+      rankBtn.classList.toggle('text-blue-700', isRank);
+      rankBtn.classList.toggle('shadow-sm', isRank);
+      rankBtn.classList.toggle('text-slate-500', !isRank);
+      bodyBtn.classList.toggle('bg-white', !isRank);
+      bodyBtn.classList.toggle('text-blue-700', !isRank);
+      bodyBtn.classList.toggle('shadow-sm', !isRank);
+      bodyBtn.classList.toggle('text-slate-500', isRank);
+    }
+
+    // Bodies only have 11 discrete bands - there's no continuum to smooth, so the whole
+    // smoothing-algorithm section is disabled and the chart renders as discrete bars instead.
+    function updateSmoothingAvailability() {
+      const isBody = AppState.entityType === 'body';
+      document.getElementById('smoothAlgorithmSection').classList.toggle('hidden', isBody);
+      document.getElementById('smoothSliderContainer').classList.toggle('hidden', isBody);
+      document.getElementById('smoothNotAvailableNote').classList.toggle('hidden', !isBody);
+    }
+
+    // Apply Presets
+    function applyPreset(presetKey) {
+      if (presetKey === 'engineers') {
+        AppState.series = [
+          {
+            id: 'series-1',
+            name: 'מהנדסים - נשים',
+            entityType: 'rank',
+            group: 'כל הקבוצות',
+            entityName: 'מהנדסים',
+            gender: 'נשים',
+            color: '#db2777',
+            visible: true
+          },
+          {
+            id: 'series-2',
+            name: 'מהנדסים - גברים',
+            entityType: 'rank',
+            group: 'כל הקבוצות',
+            entityName: 'מהנדסים',
+            gender: 'גברים',
+            color: '#2563eb',
+            visible: true
+          }
+        ];
+      } else if (presetKey === 'nurses') {
+        AppState.series = [
+          {
+            id: 'series-1',
+            name: 'אחים ואחיות - נשים',
+            entityType: 'rank',
+            group: 'מערכת הבריאות',
+            entityName: 'אחים ואחיות',
+            gender: 'נשים',
+            color: '#db2777',
+            visible: true
+          },
+          {
+            id: 'series-2',
+            name: 'אחים ואחיות - גברים',
+            entityType: 'rank',
+            group: 'מערכת הבריאות',
+            entityName: 'אחים ואחיות',
+            gender: 'גברים',
+            color: '#2563eb',
+            visible: true
+          }
+        ];
+      } else if (presetKey === 'medical') {
+        AppState.series = [
+          {
+            id: 'series-1',
+            name: 'רופאים מומחים - נשים',
+            entityType: 'rank',
+            group: 'מערכת הבריאות',
+            entityName: 'רופאים מומחים',
+            gender: 'נשים',
+            color: '#db2777',
+            visible: true
+          },
+          {
+            id: 'series-2',
+            name: 'רופאים מומחים - גברים',
+            entityType: 'rank',
+            group: 'מערכת הבריאות',
+            entityName: 'רופאים מומחים',
+            gender: 'גברים',
+            color: '#2563eb',
+            visible: true
+          }
+        ];
+      } else if (presetKey === 'legal') {
+        AppState.series = [
+          {
+            id: 'series-1',
+            name: 'משפטנים - נשים',
+            entityType: 'rank',
+            group: 'כל הקבוצות',
+            entityName: 'משפטנים',
+            gender: 'נשים',
+            color: '#db2777',
+            visible: true
+          },
+          {
+            id: 'series-2',
+            name: 'משפטנים - גברים',
+            entityType: 'rank',
+            group: 'כל הקבוצות',
+            entityName: 'משפטנים',
+            gender: 'גברים',
+            color: '#2563eb',
+            visible: true
+          }
+        ];
+      } else if (presetKey === 'multi-ranks') {
+        AppState.series = [
+          {
+            id: 'series-1',
+            name: 'אחים ואחיות',
+            entityType: 'rank',
+            group: 'כל הקבוצות',
+            entityName: 'אחים ואחיות',
+            gender: 'שניהם יחד',
+            color: '#10b981',
+            visible: true
+          },
+          {
+            id: 'series-2',
+            name: 'עובדי הוראה',
+            entityType: 'rank',
+            group: 'כל הקבוצות',
+            entityName: 'עובדי הוראה',
+            gender: 'שניהם יחד',
+            color: '#8b5cf6',
+            visible: true
+          },
+          {
+            id: 'series-3',
+            name: 'רופאים מומחים',
+            entityType: 'rank',
+            group: 'כל הקבוצות',
+            entityName: 'רופאים מומחים',
+            gender: 'שניהם יחד',
+            color: '#2563eb',
+            visible: true
+          },
+          {
+            id: 'series-4',
+            name: 'מנהלי',
+            entityType: 'rank',
+            group: 'כל הקבוצות',
+            entityName: 'מנהלי',
+            gender: 'שניהם יחד',
+            color: '#f59e0b',
+            visible: true
+          }
+        ];
+      } else if (presetKey === 'admin-sectors') {
+        AppState.series = [
+          {
+            id: 'series-1',
+            name: 'מנהלי - שלטון מקומי',
+            entityType: 'rank',
+            group: 'שלטון מקומי',
+            entityName: 'מנהלי',
+            gender: 'שניהם יחד',
+            color: '#2563eb',
+            visible: true
+          },
+          {
+            id: 'series-2',
+            name: 'מנהלי - משרדי ממשלה',
+            entityType: 'rank',
+            group: 'משרדי ממשלה',
+            entityName: 'מנהלי',
+            gender: 'שניהם יחד',
+            color: '#10b981',
+            visible: true
+          },
+          {
+            id: 'series-3',
+            name: 'מנהלי - מערכת הבריאות',
+            entityType: 'rank',
+            group: 'מערכת הבריאות',
+            entityName: 'מנהלי',
+            gender: 'שניהם יחד',
+            color: '#f59e0b',
+            visible: true
+          }
+        ];
+      } else if (presetKey === 'overall') {
+        AppState.series = [
+          {
+            id: 'series-1',
+            name: 'כלל המגזר - נשים',
+            entityType: 'rank',
+            group: 'כל הקבוצות',
+            entityName: 'כל הדירוגים',
+            gender: 'נשים',
+            color: '#db2777',
+            visible: true
+          },
+          {
+            id: 'series-2',
+            name: 'כלל המגזר - גברים',
+            entityType: 'rank',
+            group: 'כל הקבוצות',
+            entityName: 'כל הדירוגים',
+            gender: 'גברים',
+            color: '#2563eb',
+            visible: true
+          }
+        ];
+      } else if (presetKey === 'body-teachers-gender') {
+        AppState.series = [
+          {
+            id: 'series-1',
+            name: 'משרד החינוך - מורים - נשים',
+            entityType: 'body',
+            group: 'מערכת החינוך',
+            entityName: 'משרד החינוך - מורים',
+            gender: 'נשים',
+            color: '#db2777',
+            visible: true
+          },
+          {
+            id: 'series-2',
+            name: 'משרד החינוך - מורים - גברים',
+            entityType: 'body',
+            group: 'מערכת החינוך',
+            entityName: 'משרד החינוך - מורים',
+            gender: 'גברים',
+            color: '#2563eb',
+            visible: true
+          }
+        ];
+      } else if (presetKey === 'body-cities') {
+        AppState.series = [
+          {
+            id: 'series-1',
+            name: 'עיריית תל אביב- יפו',
+            entityType: 'body',
+            group: 'שלטון מקומי',
+            entityName: 'עיריית תל אביב- יפו',
+            gender: 'שניהם יחד',
+            color: '#2563eb',
+            visible: true
+          },
+          {
+            id: 'series-2',
+            name: 'עיריית ירושלים',
+            entityType: 'body',
+            group: 'שלטון מקומי',
+            entityName: 'עיריית ירושלים',
+            gender: 'שניהם יחד',
+            color: '#10b981',
+            visible: true
+          },
+          {
+            id: 'series-3',
+            name: 'עיריית חיפה',
+            entityType: 'body',
+            group: 'שלטון מקומי',
+            entityName: 'עיריית חיפה',
+            gender: 'שניהם יחד',
+            color: '#f59e0b',
+            visible: true
+          }
+        ];
+      } else if (presetKey === 'body-universities') {
+        AppState.series = [
+          {
+            id: 'series-1',
+            name: 'אוניברסיטת תל-אביב',
+            entityType: 'body',
+            group: 'גופים נתמכים במערכת ההשכלה הגבוהה',
+            entityName: 'אוניברסיטת תל-אביב',
+            gender: 'שניהם יחד',
+            color: '#2563eb',
+            visible: true
+          },
+          {
+            id: 'series-2',
+            name: 'האוניברסיטה העברית בי-ם',
+            entityType: 'body',
+            group: 'גופים נתמכים במערכת ההשכלה הגבוהה',
+            entityName: 'האוניברסיטה העברית בי-ם',
+            gender: 'שניהם יחד',
+            color: '#10b981',
+            visible: true
+          },
+          {
+            id: 'series-3',
+            name: 'אוניברסיטת בן גוריון בנגב',
+            entityType: 'body',
+            group: 'גופים נתמכים במערכת ההשכלה הגבוהה',
+            entityName: 'אוניברסיטת בן גוריון בנגב',
+            gender: 'שניהם יחד',
+            color: '#f59e0b',
+            visible: true
+          }
+        ];
+      } else if (presetKey === 'body-corps') {
+        AppState.series = [
+          {
+            id: 'series-1',
+            name: 'בנק ישראל',
+            entityType: 'body',
+            group: 'תאגידים',
+            entityName: 'בנק ישראל',
+            gender: 'שניהם יחד',
+            color: '#2563eb',
+            visible: true
+          },
+          {
+            id: 'series-2',
+            name: 'מפעל הפיס',
+            entityType: 'body',
+            group: 'תאגידים',
+            entityName: 'מפעל הפיס',
+            gender: 'שניהם יחד',
+            color: '#db2777',
+            visible: true
+          }
+        ];
+      } else if (presetKey === 'body-overall') {
+        AppState.series = [
+          {
+            id: 'series-1',
+            name: 'כלל הגופים - נשים',
+            entityType: 'body',
+            group: 'כל הקבוצות',
+            entityName: 'כל הגופים',
+            gender: 'נשים',
+            color: '#db2777',
+            visible: true
+          },
+          {
+            id: 'series-2',
+            name: 'כלל הגופים - גברים',
+            entityType: 'body',
+            group: 'כל הקבוצות',
+            entityName: 'כל הגופים',
+            gender: 'גברים',
+            color: '#2563eb',
+            visible: true
+          }
+        ];
+      }
+
+      // Presets don't specify a year explicitly - start on the default year. The entity
+      // type is derived from the preset itself (all its series share one type by
+      // construction) rather than hardcoded, since presets now cover both rank and body.
+      AppState.entityType = AppState.series[0].entityType;
+      AppState.series.forEach(s => { s.year = AppState.defaultYear; s.name = `${s.name} (${s.year})`; });
+      renderEntityTypeGlobalButtons();
+      updateSmoothingAvailability();
+
+      renderSeriesControls();
+      updateDashboard();
+    }
+
+    // Render Series List UI
+    function renderSeriesControls() {
+      const container = document.getElementById('seriesList');
+      container.innerHTML = '';
+
+      document.getElementById('seriesCountBadge').textContent = `${AppState.series.length} / 6`;
+
+      AppState.series.forEach((s, idx) => {
+        // Every series carries its own year, so different series can be pinned to
+        // different years for comparison; fall back to the default if it's ever missing.
+        if (!s.year || !AppState.availableYears.includes(s.year)) s.year = AppState.defaultYear;
+
+        // Entity type is a global setting (see btnEntityTypeRank/Body) - every series is kept
+        // in sync with it. Defensive normalization: if entity+group ended up incompatible
+        // with this series' year (e.g. a year change, a global type switch, or a preset
+        // combo that doesn't exist that year), fall back the group to 'all' rather than
+        // rendering a dead selection.
+        s.entityType = AppState.entityType;
+        const meta = AppState.metaByTypeYear[s.entityType].get(s.year);
+        if (s.entityName !== ENTITY_WILDCARD[s.entityType] && s.group !== 'כל הקבוצות') {
+          const groupsForEntity = meta && meta.entityToGroups.get(s.entityName);
+          if (!groupsForEntity || !groupsForEntity.has(s.group)) {
+            s.group = 'כל הקבוצות';
+          }
+        }
+
+        const card = document.createElement('div');
+        card.className = `series-card rounded-xl p-3 border ${s.visible ? 'bg-white border-slate-200' : 'bg-slate-50/70 border-dashed border-slate-300 opacity-60'}`;
+        card.id = `card-${s.id}`;
+
+        // Dependent dropdowns: only offer entities that exist in the chosen group THAT
+        // TYPE+YEAR, and only offer groups that actually have the chosen entity THAT TYPE+YEAR.
+        const availableEntityNames = getAvailableEntityNames(s.group, s.year, s.entityType);
+        const availableGroups = getAvailableGroups(s.entityName, s.year, s.entityType);
+
+        const yearOptionsHtml = AppState.availableYears.map(y => {
+          return `<option value="${y}" ${y === s.year ? 'selected' : ''}>${y}</option>`;
+        }).join('');
+
+        const entityOptionsHtml = availableEntityNames.map(n => {
+          return `<option value="${escapeHtml(n)}" ${n === s.entityName ? 'selected' : ''}>${escapeHtml(n)}</option>`;
+        }).join('');
+
+        const groupOptionsHtml = availableGroups.map(g => {
+          return `<option value="${escapeHtml(g)}" ${g === s.group ? 'selected' : ''}>${escapeHtml(g)}</option>`;
+        }).join('');
+
+        const genderOptionsHtml = AppState.genders.map(gen => {
+          return `<option value="${gen}" ${gen === s.gender ? 'selected' : ''}>${gen}</option>`;
+        }).join('');
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2 flex-1">
+              <span class="w-3 h-3 rounded-full shrink-0 shadow-sm" style="background-color: ${s.color};"></span>
+              <input type="text" value="${escapeHtml(s.name)}" class="series-name-input text-xs font-bold text-slate-800 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none w-full truncate" data-id="${s.id}">
+            </div>
+
+            <div class="flex items-center gap-1">
+              <button class="btn-toggle-vis p-1 text-slate-400 hover:text-slate-700 rounded" data-id="${s.id}" title="${s.visible ? 'הסתר מהגרף' : 'הצג בגרף'}">
+                <i data-lucide="${s.visible ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5"></i>
+              </button>
+              <input type="color" value="${s.color}" class="color-picker-input w-5 h-5 rounded cursor-pointer border-0 bg-transparent" data-id="${s.id}" title="שנה צבע סדרה">
+              ${AppState.series.length > 1 ? `
+                <button class="btn-del-series p-1 text-red-400 hover:text-red-600 rounded" data-id="${s.id}" title="מחק סדרה">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+
+          <div class="space-y-1.5 text-[11px]">
+            <div class="flex items-center gap-2">
+              <label class="shrink-0 whitespace-nowrap text-[10px] text-slate-400 font-medium">שנה:</label>
+              <select class="year-select flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 font-bold focus:ring-1 focus:ring-blue-500" data-id="${s.id}">
+                ${yearOptionsHtml}
+              </select>
+            </div>
+
+            <div class="flex items-center gap-2 relative">
+              <label class="shrink-0 whitespace-nowrap text-[10px] text-slate-400 font-medium">${s.entityType === 'body' ? 'גוף:' : 'דירוג:'}</label>
+              ${s.entityType === 'body' ? `
+                <input type="text" class="entity-search-input flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 font-medium focus:ring-1 focus:ring-blue-500" data-id="${s.id}" autocomplete="off" placeholder="🔍 חפש גוף..." value="${s.entityName === ENTITY_WILDCARD.body ? '' : escapeHtml(s.entityName)}">
+                <div class="entity-search-dropdown hidden absolute top-full right-0 left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-56 overflow-y-auto divide-y divide-slate-100" data-id="${s.id}"></div>
+              ` : `
+                <select class="entity-select flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 font-medium focus:ring-1 focus:ring-blue-500" data-id="${s.id}">
+                  ${entityOptionsHtml}
+                </select>
+              `}
+            </div>
+
+            <div class="flex items-center gap-2">
+              <label class="shrink-0 whitespace-nowrap text-[10px] text-slate-400 font-medium">קבוצה:</label>
+              <select class="group-select flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 font-medium focus:ring-1 focus:ring-blue-500" data-id="${s.id}">
+                ${groupOptionsHtml}
+              </select>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <label class="shrink-0 whitespace-nowrap text-[10px] text-slate-400 font-medium">מגדר:</label>
+              <select class="gender-select flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 font-medium focus:ring-1 focus:ring-blue-500" data-id="${s.id}">
+                ${genderOptionsHtml}
+              </select>
+            </div>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      lucide.createIcons();
+      bindSeriesCardEvents();
+    }
+
+    function bindSeriesCardEvents() {
+      // Name edit
+      document.querySelectorAll('.series-name-input').forEach(inp => {
+        inp.addEventListener('change', (e) => {
+          const s = AppState.series.find(x => x.id === e.target.dataset.id);
+          if (s) {
+            s.name = e.target.value.trim() || 'סדרה';
+            updateDashboard();
+          }
+        });
+      });
+
+      // Visibility toggle
+      document.querySelectorAll('.btn-toggle-vis').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const s = AppState.series.find(x => x.id === btn.dataset.id);
+          if (s) {
+            s.visible = !s.visible;
+            renderSeriesControls();
+            updateDashboard();
+          }
+        });
+      });
+
+      // Color picker
+      document.querySelectorAll('.color-picker-input').forEach(inp => {
+        inp.addEventListener('input', (e) => {
+          const s = AppState.series.find(x => x.id === inp.dataset.id);
+          if (s) {
+            s.color = e.target.value;
+            renderSeriesControls();
+            updateDashboard();
+          }
+        });
+      });
+
+      // Delete series
+      document.querySelectorAll('.btn-del-series').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          AppState.series = AppState.series.filter(x => x.id !== btn.dataset.id);
+          renderSeriesControls();
+          updateDashboard();
+        });
+      });
+
+      // Year Select (per-series - this is what enables comparing the same entity/group
+      // across different years)
+      document.querySelectorAll('.year-select').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const s = AppState.series.find(x => x.id === sel.dataset.id);
+          if (s) {
+            s.year = Number(e.target.value);
+            // The entity/group combo might not exist in the newly chosen year
+            const meta = AppState.metaByTypeYear[s.entityType].get(s.year);
+            if (s.entityName !== ENTITY_WILDCARD[s.entityType] && s.group !== 'כל הקבוצות') {
+              const validGroups = meta && meta.entityToGroups.get(s.entityName);
+              if (!validGroups || !validGroups.has(s.group)) {
+                s.group = 'כל הקבוצות';
+              }
+            }
+            autoUpdateSeriesName(s);
+            renderSeriesControls();
+            updateDashboard();
+          }
+        });
+      });
+
+      // Entity Select (rank name or body name, depending on s.entityType)
+      document.querySelectorAll('.entity-select').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const s = AppState.series.find(x => x.id === sel.dataset.id);
+          if (s) selectEntityForSeries(s, e.target.value);
+        });
+      });
+
+      // Entity search box (body mode only - hundreds of bodies makes a plain <select>
+      // unusable, so this filters as you type instead).
+      document.querySelectorAll('.entity-search-input').forEach(inp => {
+        const dropdown = document.querySelector(`.entity-search-dropdown[data-id="${inp.dataset.id}"]`);
+        if (!dropdown) return;
+        const open = () => {
+          const s = AppState.series.find(x => x.id === inp.dataset.id);
+          if (s) {
+            renderEntitySearchResults(s, dropdown, inp.value);
+            dropdown.classList.remove('hidden');
+          }
+        };
+        inp.addEventListener('focus', open);
+        inp.addEventListener('input', open);
+      });
+
+      // Group Select
+      document.querySelectorAll('.group-select').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const s = AppState.series.find(x => x.id === sel.dataset.id);
+          if (s) {
+            s.group = e.target.value;
+            // If the selected group does not have the currently selected entity (this series' type+year), reset entity to the wildcard
+            if (s.group !== 'כל הקבוצות' && s.entityName !== ENTITY_WILDCARD[s.entityType]) {
+              const meta = AppState.metaByTypeYear[s.entityType].get(s.year);
+              const validEntities = meta && meta.groupToEntities.get(s.group);
+              if (!validEntities || !validEntities.has(s.entityName)) {
+                s.entityName = ENTITY_WILDCARD[s.entityType];
+              }
+            }
+            autoUpdateSeriesName(s);
+            renderSeriesControls();
+            updateDashboard();
+          }
+        });
+      });
+
+      // Gender Select
+      document.querySelectorAll('.gender-select').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const s = AppState.series.find(x => x.id === sel.dataset.id);
+          if (s) {
+            s.gender = e.target.value;
+            autoUpdateSeriesName(s);
+            renderSeriesControls();
+            updateDashboard();
+          }
+        });
+      });
+    }
+
+    function autoUpdateSeriesName(s) {
+      let parts = [];
+      if (s.entityName !== ENTITY_WILDCARD[s.entityType]) parts.push(s.entityName);
+      if (s.group !== 'כל הקבוצות') parts.push(s.group);
+      if (s.gender !== 'שניהם יחד') parts.push(s.gender);
+      const base = parts.length > 0 ? parts.join(' - ') : (s.entityType === 'body' ? 'כלל הגופים' : 'כלל הדירוגים');
+      s.name = `${base} (${s.year})`;
+    }
+
+    // Shared by the rank <select> and the body search-box: apply a new entity choice to a
+    // series, resetting the group if it's no longer compatible, then re-render.
+    function selectEntityForSeries(s, value) {
+      s.entityName = value;
+      if (s.entityName !== ENTITY_WILDCARD[s.entityType] && s.group !== 'כל הקבוצות') {
+        const meta = AppState.metaByTypeYear[s.entityType].get(s.year);
+        const validGroups = meta && meta.entityToGroups.get(s.entityName);
+        if (!validGroups || !validGroups.has(s.group)) {
+          s.group = 'כל הקבוצות';
+        }
+      }
+      autoUpdateSeriesName(s);
+      renderSeriesControls();
+      updateDashboard();
+    }
+
+    // Populate the body-mode entity search dropdown with matches for the current query
+    // (substring, case-insensitive) - there are hundreds of bodies, so a plain <select>
+    // isn't usable and this needs real filtering.
+    function renderEntitySearchResults(s, dropdown, query) {
+      const wildcard = ENTITY_WILDCARD[s.entityType];
+      const available = getAvailableEntityNames(s.group, s.year, s.entityType).filter(n => n !== wildcard);
+      const q = (query || '').trim().toLowerCase();
+      const matches = q ? available.filter(n => n.toLowerCase().includes(q)).slice(0, 30) : available.slice(0, 20);
+
+      let html = `<div class="entity-search-item p-2 text-slate-500 font-semibold cursor-pointer hover:bg-slate-100" data-value="${escapeHtml(wildcard)}" data-id="${s.id}">${escapeHtml(wildcard)}</div>`;
+      if (matches.length === 0) {
+        html += `<div class="p-2 text-slate-400 text-center">לא נמצאו תוצאות</div>`;
+      } else {
+        html += matches.map(n => `<div class="entity-search-item p-2 hover:bg-blue-50 cursor-pointer" data-value="${escapeHtml(n)}" data-id="${s.id}">${escapeHtml(n)}</div>`).join('');
+        if (!q && available.length > 20) {
+          html += `<div class="p-2 text-slate-400 text-center text-[11px]">... הקלידו לחיפוש בין ${available.length} גופים</div>`;
+        }
+      }
+      dropdown.innerHTML = html;
+
+      dropdown.querySelectorAll('.entity-search-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const ser = AppState.series.find(x => x.id === item.dataset.id);
+          if (ser) selectEntityForSeries(ser, item.dataset.value);
+        });
+      });
+    }
+
+    // Filter and Aggregate Data for a given Series
+    function computeSeriesData(s) {
+      const nameField = ENTITY_FIELD[s.entityType];
+      const wildcard = ENTITY_WILDCARD[s.entityType];
+      const filtered = rawDataFor(s.entityType).filter(d => {
+        if (Number(d.SHANA) !== s.year) return false;
+        if (s.group !== 'כל הקבוצות' && d.KVUTZA !== s.group) return false;
+        if (s.entityName !== wildcard && d[nameField] !== s.entityName) return false;
+        if (s.gender !== 'שניהם יחד' && d.NAME_MIN !== s.gender) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        return {
+          seriesId: s.id,
+          seriesName: s.name,
+          color: s.color,
+          visible: s.visible,
+          totalEmployees: 0,
+          totalMisrot: 0,
+          weightedMean: 0,
+          medianSalary: 0,
+          modeSalary: 0,
+          stdDev: 0,
+          preciseAvgWage: null,
+          preciseAvgCost: null,
+          layerPct: null,
+          bins: new Map(),
+          sortedBins: []
+        };
+      }
+
+      // Aggregate by SALARY_MIDPOINT
+      const bins = new Map();
+      let totalEmployees = 0;
+      let totalMisrot = 0;
+      let weightedSalarySum = 0;
+
+      // Salary-layer / precise-wage sums (same fields & formula as the "שכר דיגיטלי" tab's
+      // build_salary_ranges_bundle.py, just aggregated live here instead of pre-baked per rank)
+      let posMonths = 0, sumGross = 0, sumCost = 0;
+      let lBase = 0, lAdd = 0, lExtra = 0, lExp = 0, lOther = 0;
+
+      filtered.forEach(d => {
+        // Ranks report a real SALARY_MIDPOINT bin; bodies only report one of 11 fixed bands
+        // (BAND), which is mapped to a representative ₪ value so both entity types share the
+        // same numeric x-axis.
+        const salary = s.entityType === 'body' ? (BAND_MIDPOINTS[d.BAND] || 0) : (Number(d.SALARY_MIDPOINT) || 0);
+        const count = Number(d.COUNT_OVEDIM) || 0;
+        const misrot = Number(d.TOTAL_MISROT) || 0;
+        const avgSal = Number(d.AVG_SALARY_IN_BIN) || salary;
+
+        if (!bins.has(salary)) {
+          bins.set(salary, { salary, count: 0, misrot: 0, weightedSum: 0 });
+        }
+        const b = bins.get(salary);
+        b.count += count;
+        b.misrot += misrot;
+        b.weightedSum += count * avgSal;
+
+        totalEmployees += count;
+        totalMisrot += misrot;
+        weightedSalarySum += count * avgSal;
+
+        posMonths += Number(d.posMonths) || 0;
+        sumGross += Number(d.sumGross) || 0;
+        sumCost += Number(d.sumCost) || 0;
+        lBase += Number(d.lBase) || 0;
+        lAdd += Number(d.lAdd) || 0;
+        lExtra += Number(d.lExtra) || 0;
+        lExp += Number(d.lExp) || 0;
+        lOther += Number(d.lOther) || 0;
+      });
+
+      const preciseAvgWage = posMonths > 0 ? Math.round(sumGross / posMonths) : null;
+      const preciseAvgCost = posMonths > 0 ? Math.round(sumCost / posMonths) : null;
+
+      const layerBaseCombined = lBase + lAdd; // "יסוד ותוספות"
+      const layersTotal = layerBaseCombined + lExtra + lExp + lOther;
+      const layerPct = layersTotal > 0 ? {
+        base: layerBaseCombined / layersTotal,
+        extra: lExtra / layersTotal,
+        expense: lExp / layersTotal,
+        other: lOther / layersTotal,
+      } : null;
+
+      const sortedBins = Array.from(bins.values()).sort((a,b) => a.salary - b.salary);
+      const weightedMean = totalEmployees > 0 ? Math.round(weightedSalarySum / totalEmployees) : 0;
+
+      // Compute estimated median
+      let medianSalary = 0;
+      let cumulative = 0;
+      const halfTotal = totalEmployees / 2;
+      for (const b of sortedBins) {
+        cumulative += b.count;
+        if (cumulative >= halfTotal) {
+          medianSalary = b.salary;
+          break;
+        }
+      }
+
+      // Compute mode (Peak)
+      let modeSalary = 0;
+      let maxCount = -1;
+      sortedBins.forEach(b => {
+        if (b.count > maxCount) {
+          maxCount = b.count;
+          modeSalary = b.salary;
+        }
+      });
+
+      // Compute standard deviation
+      let varianceSum = 0;
+      sortedBins.forEach(b => {
+        varianceSum += b.count * Math.pow(b.salary - weightedMean, 2);
+      });
+      const stdDev = totalEmployees > 1 ? Math.round(Math.sqrt(varianceSum / totalEmployees)) : 0;
+
+      return {
+        seriesId: s.id,
+        seriesName: s.name,
+        color: s.color,
+        visible: s.visible,
+        totalEmployees,
+        totalMisrot: Math.round(totalMisrot * 10) / 10,
+        weightedMean,
+        medianSalary,
+        modeSalary,
+        stdDev,
+        preciseAvgWage,
+        preciseAvgCost,
+        layerPct,
+        bins,
+        sortedBins
+      };
+    }
+
+    // Apply Smoothing Algorithms
+    function generateSmoothedPoints(computedSeries, allSalarySteps) {
+      if (!computedSeries || computedSeries.totalEmployees === 0) return [];
+
+      const metric = AppState.metric;
+      const smoothType = AppState.smoothType;
+      const param = AppState.smoothParam;
+
+      const rawPoints = allSalarySteps.map(sal => {
+        const b = computedSeries.bins.get(sal);
+        let val = 0;
+        if (b) {
+          if (metric === 'COUNT_OVEDIM') val = b.count;
+          else if (metric === 'PCT_OVEDIM') val = computedSeries.totalEmployees > 0 ? (b.count / computedSeries.totalEmployees) * 100 : 0;
+          else if (metric === 'TOTAL_MISROT') val = b.misrot;
+        }
+        return [sal, val];
+      });
+
+      if (smoothType === 'raw' || smoothType === 'spline') {
+        return rawPoints;
+      }
+
+      if (smoothType === 'ma') {
+        const windowSize = Math.max(2, Math.round(param));
+        const smoothed = [];
+        for (let i = 0; i < rawPoints.length; i++) {
+          let sum = 0;
+          let weightSum = 0;
+          for (let j = Math.max(0, i - windowSize); j <= Math.min(rawPoints.length - 1, i + windowSize); j++) {
+            const dist = Math.abs(i - j);
+            const w = Math.exp(-Math.pow(dist / (windowSize / 2), 2));
+            sum += rawPoints[j][1] * w;
+            weightSum += w;
+          }
+          const smoothedVal = weightSum > 0 ? sum / weightSum : 0;
+          smoothed.push([rawPoints[i][0], Math.round(smoothedVal * 100) / 100]);
+        }
+        return smoothed;
+      }
+
+      if (smoothType === 'kde') {
+        const bandwidth = param || 3000;
+        const total = computedSeries.totalEmployees;
+        if (total === 0) return rawPoints;
+
+        const nonZeroBins = computedSeries.sortedBins.filter(b => b.count > 0);
+
+        const kdePoints = allSalarySteps.map(x => {
+          let density = 0;
+          nonZeroBins.forEach(b => {
+            const u = (x - b.salary) / bandwidth;
+            const k = (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * u * u);
+            density += b.count * k;
+          });
+          const normalizedDensity = density / bandwidth;
+          
+          let yVal = 0;
+          if (metric === 'COUNT_OVEDIM') {
+            yVal = normalizedDensity * 1000;
+          } else if (metric === 'PCT_OVEDIM') {
+            yVal = (normalizedDensity * 1000 / total) * 100;
+          } else if (metric === 'TOTAL_MISROT') {
+            yVal = normalizedDensity * 1000 * (computedSeries.totalMisrot / total);
+          }
+
+          return [x, Math.round(yVal * 100) / 100];
+        });
+
+        return kdePoints;
+      }
+
+      return rawPoints;
+    }
+
+    // Main Update Function
+    function updateDashboard() {
+      if (!AppState.rawData || AppState.rawData.length === 0) return;
+
+      // Build the shared x-axis salary grid from whichever years/entity-types are actually
+      // in play across the current series (each series can be pinned to a different year
+      // and/or entity type).
+      const activeYears = new Set(AppState.series.map(s => s.year));
+      const usedTypes = new Set(AppState.series.map(s => s.entityType));
+      const salarySet = new Set();
+      if (usedTypes.has('rank')) {
+        AppState.rawData.forEach(d => {
+          if (activeYears.has(Number(d.SHANA)) && d.SALARY_MIDPOINT !== undefined) salarySet.add(Number(d.SALARY_MIDPOINT));
+        });
+      }
+      if (usedTypes.has('body')) {
+        // Bands are the same fixed 11 values regardless of year - no need to scan rows.
+        Object.values(BAND_MIDPOINTS).forEach(v => salarySet.add(v));
+      }
+      const allSalarySteps = Array.from(salarySet).sort((a,b) => a - b);
+
+      const computedResults = AppState.series.map(s => computeSeriesData(s));
+      const visibleResults = computedResults.filter(r => r.visible);
+
+      renderKPICards(computedResults);
+      renderChart(visibleResults, allSalarySteps);
+      renderLayersChart(visibleResults);
+      renderTable(computedResults, allSalarySteps);
+
+      const emptyOverlay = document.getElementById('chartEmptyOverlay');
+      if (visibleResults.length === 0 || visibleResults.every(r => r.totalEmployees === 0)) {
+        emptyOverlay.classList.remove('hidden');
+      } else {
+        emptyOverlay.classList.add('hidden');
+      }
+    }
+
+    // Render KPI Metric Cards
+    function renderKPICards(computedResults) {
+      const container = document.getElementById('kpiCardsGrid');
+      container.innerHTML = '';
+
+      const activeResults = computedResults.filter(r => r.visible && r.totalEmployees > 0);
+
+      if (activeResults.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full bg-white rounded-2xl p-4 border border-slate-200 text-center text-xs text-slate-500 font-medium">
+            בחר סדרות נתונים פעילות להצגת מדדי שכר השוואתיים
+          </div>
+        `;
+        return;
+      }
+
+      activeResults.forEach(r => {
+        const card = document.createElement('div');
+        card.className = 'glass-panel rounded-2xl p-4 shadow-sm border-t-4 transition hover:shadow-md';
+        card.style.borderTopColor = r.color;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-800 truncate" title="${escapeHtml(r.seriesName)}">${escapeHtml(r.seriesName)}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background-color: ${r.color}15; color: ${r.color};">
+              ${r.totalEmployees.toLocaleString('he-IL')} עובדים
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-100">
+            <div>
+              <span class="text-[10px] text-slate-400 block font-medium">שכר ממוצע משוקלל</span>
+              <span class="text-base font-black text-slate-900 font-mono">₪${r.weightedMean.toLocaleString('he-IL')}</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block font-medium">שכר חציוני משוער</span>
+              <span class="text-base font-black text-slate-900 font-mono">₪${r.medianSalary.toLocaleString('he-IL')}</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-50 text-[10px] text-slate-500">
+            <span>שיא שכיחות: <strong class="font-mono text-slate-700">₪${r.modeSalary.toLocaleString('he-IL')}</strong></span>
+            <span>סטיית תקן: <strong class="font-mono text-slate-700">±₪${r.stdDev.toLocaleString('he-IL')}</strong></span>
+          </div>
+
+          ${r.preciseAvgWage != null ? `
+            <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-50 text-[10px] text-slate-500" title="מהחישוב המדויק של רבדי השכר (ברוטו שוטף והפרשים חלקי חודשי-משרה) - ראו מתודולוגיה">
+              <span>שכר ממוצע מדויק (רבדים): <strong class="font-mono text-slate-700">₪${r.preciseAvgWage.toLocaleString('he-IL')}</strong></span>
+              <span>עלות מעסיק: <strong class="font-mono text-slate-700">₪${(r.preciseAvgCost || 0).toLocaleString('he-IL')}</strong></span>
+            </div>
+          ` : ''}
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Render ECharts
+    // Discrete rendering for body-mode series: grouped bars over the 11 fixed bands
+    // (category axis), no smoothing/dataZoom - there is nothing continuous to show.
+    function renderBodyBarChart(visibleResults) {
+      const metric = AppState.metric;
+      const metricLabels = {
+        'COUNT_OVEDIM': 'כמות עובדים',
+        'PCT_OVEDIM': 'אחוז עובדים (%)',
+        'TOTAL_MISROT': 'היקף משרות'
+      };
+      const yAxisName = metricLabels[metric];
+      const bandEntries = Object.entries(BAND_MIDPOINTS); // [[bandName, ₪value], ...] in fixed order
+      const categories = bandEntries.map(([name]) => name);
+
+      const echartsSeries = visibleResults.map(r => {
+        const data = bandEntries.map(([, val]) => {
+          const b = r.bins.get(val);
+          if (!b) return 0;
+          if (metric === 'COUNT_OVEDIM') return Math.round(b.count);
+          if (metric === 'PCT_OVEDIM') return r.totalEmployees > 0 ? Math.round((b.count / r.totalEmployees) * 10000) / 100 : 0;
+          if (metric === 'TOTAL_MISROT') return Math.round(b.misrot * 10) / 10;
+          return 0;
+        });
+        return {
+          name: r.seriesName,
+          type: 'bar',
+          data,
+          barMaxWidth: 28,
+          itemStyle: { color: r.color }
+        };
+      });
+
+      const option = {
+        animation: true,
+        animationDuration: 400,
+        backgroundColor: 'transparent',
+        grid: { top: 40, right: 25, bottom: 70, left: 65, containLabel: true },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          backgroundColor: 'rgba(255, 255, 255, 0.98)',
+          borderColor: '#e2e8f0',
+          borderWidth: 1,
+          padding: [10, 14],
+          textStyle: { fontFamily: 'Heebo, sans-serif', color: '#1e293b', fontSize: 12 },
+          extraCssText: 'box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); border-radius: 12px;',
+          formatter: function(params) {
+            if (!params || params.length === 0) return '';
+            let html = `<div dir="rtl" class="space-y-1.5 text-right">`;
+            html += `<div class="font-black text-slate-900 border-b border-slate-100 pb-1">רצועת שכר: <span class="font-mono text-blue-600">${params[0].axisValue}</span></div>`;
+            params.forEach(p => {
+              const valFormatted = metric === 'PCT_OVEDIM' ? `${p.value.toFixed(2)}%` : Number(p.value).toLocaleString('he-IL');
+              html += `
+                <div class="flex items-center justify-between gap-4 text-xs">
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${p.color};"></span>
+                    <span class="font-medium text-slate-700">${p.seriesName}:</span>
+                  </div>
+                  <span class="font-black text-slate-900 font-mono">${valFormatted}</span>
+                </div>
+              `;
+            });
+            html += `</div>`;
+            return html;
+          }
+        },
+        legend: {
+          show: true, top: 5, left: 'center',
+          textStyle: { fontFamily: 'Heebo, sans-serif', fontSize: 12, color: '#475569' }
+        },
+        xAxis: {
+          type: 'category',
+          data: categories,
+          name: 'רצועת שכר ברוטו (11 רצועות קבועות)',
+          nameLocation: 'middle',
+          nameGap: 45,
+          nameTextStyle: { fontFamily: 'Heebo, sans-serif', fontSize: 12, fontWeight: 'bold', color: '#64748b' },
+          axisLabel: { fontFamily: 'Heebo, sans-serif', color: '#64748b', interval: 0, rotate: 25 }
+        },
+        yAxis: {
+          type: 'value',
+          name: yAxisName,
+          nameTextStyle: { fontFamily: 'Heebo, sans-serif', fontSize: 12, fontWeight: 'bold', color: '#64748b' },
+          axisLabel: {
+            fontFamily: 'Heebo, sans-serif', color: '#64748b',
+            formatter: (val) => metric === 'PCT_OVEDIM' ? `${val.toFixed(1)}%` : Number(val).toLocaleString('he-IL')
+          },
+          splitLine: { lineStyle: { color: '#f1f5f9' } }
+        },
+        series: echartsSeries
+      };
+
+      chartInstance.setOption(option, true);
+    }
+
+    function renderChart(visibleResults, allSalarySteps) {
+      if (!chartInstance) return;
+
+      // Bodies only have 11 discrete bands - render as grouped bars on a category axis
+      // instead of a smoothed/continuous line, since there's no real continuum to draw.
+      if (AppState.entityType === 'body') {
+        renderBodyBarChart(visibleResults);
+        return;
+      }
+
+      const metric = AppState.metric;
+      const smoothType = AppState.smoothType;
+      const smoothParam = AppState.smoothParam;
+      const isSpline = smoothType === 'spline';
+
+      const metricLabels = {
+        'COUNT_OVEDIM': 'כמות עובדים',
+        'PCT_OVEDIM': 'אחוז עובדים (%)',
+        'TOTAL_MISROT': 'היקף משרות'
+      };
+
+      const yAxisName = metricLabels[metric];
+      const echartsSeries = [];
+
+      visibleResults.forEach((r, idx) => {
+        const points = generateSmoothedPoints(r, allSalarySteps);
+
+        const mainSeriesObj = {
+          name: r.seriesName,
+          type: 'line',
+          data: points,
+          smooth: isSpline ? smoothParam : false,
+          showSymbol: AppState.showRawPoints,
+          symbolSize: 4,
+          lineStyle: {
+            width: AppState.lineWidth,
+            color: r.color
+          },
+          itemStyle: {
+            color: r.color
+          },
+          areaStyle: AppState.areaOpacity > 0 ? {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: `${r.color}${Math.round(AppState.areaOpacity * 255).toString(16).padStart(2, '0')}` },
+              { offset: 1, color: `${r.color}00` }
+            ])
+          } : undefined,
+          markLine: AppState.showStatsLines ? {
+            symbol: ['none', 'none'],
+            silent: false,
+            data: [
+              {
+                xAxis: r.weightedMean,
+                lineStyle: { type: 'dashed', color: r.color, width: 1.5 },
+                label: {
+                  formatter: `ממוצע: ₪${r.weightedMean.toLocaleString('he-IL')}`,
+                  position: 'insideEndTop',
+                  fontSize: 10,
+                  color: r.color
+                }
+              },
+              {
+                xAxis: r.medianSalary,
+                lineStyle: { type: 'dotted', color: r.color, width: 1.5 },
+                label: {
+                  formatter: `חציון: ₪${r.medianSalary.toLocaleString('he-IL')}`,
+                  position: 'insideMiddleTop',
+                  fontSize: 10,
+                  color: r.color
+                }
+              }
+            ]
+          } : undefined,
+          markPoint: AppState.showPeaks ? {
+            symbol: 'pin',
+            symbolSize: 32,
+            itemStyle: { color: r.color },
+            data: [
+              {
+                name: 'שיא',
+                coord: [
+                  r.modeSalary,
+                  (points.find(p => p[0] === r.modeSalary) || [0, 0])[1]
+                ],
+                value: `שיא: ₪${r.modeSalary.toLocaleString('he-IL')}`,
+                label: { fontSize: 9, color: '#ffffff' }
+              }
+            ]
+          } : undefined
+        };
+
+        echartsSeries.push(mainSeriesObj);
+      });
+
+      const option = {
+        animation: true,
+        animationDuration: 600,
+        backgroundColor: 'transparent',
+        grid: {
+          top: 40,
+          right: 25,
+          bottom: 70,
+          left: 65,
+          containLabel: true
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'cross',
+            crossStyle: { color: '#94a3b8' },
+            lineStyle: { color: '#cbd5e1', width: 1, type: 'dashed' }
+          },
+          backgroundColor: 'rgba(255, 255, 255, 0.98)',
+          borderColor: '#e2e8f0',
+          borderWidth: 1,
+          padding: [10, 14],
+          textStyle: {
+            fontFamily: 'Heebo, sans-serif',
+            color: '#1e293b',
+            fontSize: 12
+          },
+          extraCssText: 'box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); border-radius: 12px;',
+          formatter: function(params) {
+            if (!params || params.length === 0) return '';
+            const salary = Number(params[0].axisValue).toLocaleString('he-IL');
+            let html = `<div dir="rtl" class="space-y-1.5 text-right">`;
+            html += `<div class="font-black text-slate-900 border-b border-slate-100 pb-1 flex items-center justify-between gap-4">
+                      <span>מדרגת שכר:</span>
+                      <span class="font-mono text-blue-600">₪${salary}</span>
+                    </div>`;
+
+            params.forEach(p => {
+              const valFormatted = metric === 'PCT_OVEDIM' ? `${p.data[1].toFixed(2)}%` : Number(p.data[1]).toLocaleString('he-IL');
+              html += `
+                <div class="flex items-center justify-between gap-4 text-xs">
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${p.color};"></span>
+                    <span class="font-medium text-slate-700">${p.seriesName}:</span>
+                  </div>
+                  <span class="font-black text-slate-900 font-mono">${valFormatted}</span>
+                </div>
+              `;
+            });
+
+            html += `</div>`;
+            return html;
+          }
+        },
+        legend: {
+          show: true,
+          top: 5,
+          left: 'center',
+          textStyle: {
+            fontFamily: 'Heebo, sans-serif',
+            fontSize: 12,
+            color: '#475569'
+          }
+        },
+        xAxis: {
+          type: 'value',
+          name: 'שכר ברוטו (₪)',
+          nameLocation: 'middle',
+          nameGap: 32,
+          nameTextStyle: {
+            fontFamily: 'Heebo, sans-serif',
+            fontSize: 12,
+            fontWeight: 'bold',
+            color: '#64748b'
+          },
+          axisLabel: {
+            fontFamily: 'Heebo, sans-serif',
+            formatter: (val) => val >= 1000 ? `₪${(val/1000).toFixed(0)}k` : `₪${val}`,
+            color: '#64748b'
+          },
+          splitLine: {
+            lineStyle: { color: '#f1f5f9' }
+          },
+          min: 0
+        },
+        yAxis: {
+          type: 'value',
+          name: yAxisName,
+          nameTextStyle: {
+            fontFamily: 'Heebo, sans-serif',
+            fontSize: 12,
+            fontWeight: 'bold',
+            color: '#64748b'
+          },
+          axisLabel: {
+            fontFamily: 'Heebo, sans-serif',
+            formatter: (val) => metric === 'PCT_OVEDIM' ? `${val.toFixed(1)}%` : Number(val).toLocaleString('he-IL'),
+            color: '#64748b'
+          },
+          splitLine: {
+            lineStyle: { color: '#f1f5f9' }
+          }
+        },
+        dataZoom: [
+          {
+            type: 'slider',
+            show: true,
+            xAxisIndex: [0],
+            start: AppState.zoomRange[0],
+            end: AppState.zoomRange[1],
+            bottom: 8,
+            height: 24,
+            borderColor: 'transparent',
+            backgroundColor: '#f8fafc',
+            fillerColor: 'rgba(37, 99, 235, 0.12)',
+            handleStyle: {
+              color: '#2563eb',
+              borderColor: '#1d4ed8'
+            },
+            textStyle: {
+              fontFamily: 'Heebo, sans-serif',
+              fontSize: 10,
+              color: '#64748b'
+            },
+            labelFormatter: (val) => `₪${(val/1000).toFixed(0)}k`
+          },
+          {
+            type: 'inside',
+            xAxisIndex: [0]
+          }
+        ],
+        series: echartsSeries
+      };
+
+      chartInstance.setOption(option, true);
+    }
+
+    // Render the salary-layer composition chart: a 100%-stacked horizontal bar, one row per
+    // visible series, using the exact same 4-layer methodology (fields and formula) as the
+    // "שכר דיגיטלי" tab's build_salary_ranges_bundle.py.
+    function renderLayersChart(visibleResults) {
+      if (!layersChartInstance) return;
+
+      const withLayers = visibleResults.filter(r => r.totalEmployees > 0 && r.layerPct);
+      const overlay = document.getElementById('chartLayersEmptyOverlay');
+
+      if (withLayers.length === 0) {
+        overlay.classList.remove('hidden');
+        layersChartInstance.clear();
+        return;
+      }
+      overlay.classList.add('hidden');
+
+      const categories = withLayers.map(r => r.seriesName);
+
+      const series = LAYER_SEGMENTS.map(seg => ({
+        name: seg.name,
+        type: 'bar',
+        stack: 'total',
+        barMaxWidth: 34,
+        itemStyle: { color: seg.color },
+        label: {
+          show: true,
+          formatter: p => p.value >= 5 ? p.value.toFixed(0) + '%' : '',
+          color: '#ffffff',
+          fontFamily: 'Heebo',
+          fontSize: 10,
+          fontWeight: 700,
+        },
+        data: withLayers.map(r => Math.round(r.layerPct[seg.key] * 1000) / 10),
+      }));
+
+      layersChartInstance.setOption({
+        backgroundColor: 'transparent',
+        grid: { top: 10, right: 20, bottom: 30, left: 10, containLabel: true },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          textStyle: { fontFamily: 'Heebo' },
+          formatter: params => {
+            const r = withLayers[params[0].dataIndex];
+            let html = `<div style="text-align:right"><strong>${r.seriesName}</strong><br>`;
+            params.forEach(p => {
+              html += `<span style="color:${p.color}">●</span> ${p.seriesName}: <strong>${p.value.toFixed(1)}%</strong><br>`;
+            });
+            html += `</div>`;
+            return html;
+          }
+        },
+        legend: {
+          bottom: 0,
+          textStyle: { fontFamily: 'Heebo', fontSize: 11, color: '#475569' }
+        },
+        xAxis: {
+          type: 'value',
+          max: 100,
+          axisLabel: { formatter: '{value}%', fontFamily: 'Heebo', color: '#64748b' },
+          splitLine: { lineStyle: { color: '#f1f5f9' } }
+        },
+        yAxis: {
+          type: 'category',
+          data: categories,
+          axisLabel: { fontFamily: 'Heebo', fontSize: 11, color: '#334155', width: 160, overflow: 'truncate' }
+        },
+        series
+      }, true);
+    }
+
+    // Render Table Data
+    function renderTable(computedResults, allSalarySteps) {
+      const thead = document.getElementById('tableHeaderRow');
+      const tbody = document.getElementById('tableBody');
+      const countLabel = document.getElementById('tableRowsCount');
+
+      const activeResults = computedResults.filter(r => r.visible);
+
+      thead.innerHTML = `<th class="py-2 px-3 rounded-r-lg">מדרגת שכר</th>`;
+      activeResults.forEach(r => {
+        thead.innerHTML += `
+          <th class="py-2 px-3" style="color: ${r.color}">
+            ${r.seriesName} (עובדים)
+          </th>
+          <th class="py-2 px-3 text-slate-400 font-normal">
+            % מסך הסדרה
+          </th>
+        `;
+      });
+
+      const tableRows = [];
+      allSalarySteps.forEach(sal => {
+        let hasData = false;
+        const rowObj = { salary: sal, values: [] };
+
+        activeResults.forEach(r => {
+          const b = r.bins.get(sal);
+          const count = b ? b.count : 0;
+          const pct = r.totalEmployees > 0 ? (count / r.totalEmployees) * 100 : 0;
+          if (count > 0) hasData = true;
+          rowObj.values.push({ count, pct });
+        });
+
+        if (hasData) {
+          tableRows.push(rowObj);
+        }
+      });
+
+      countLabel.textContent = `${tableRows.length} מדרגות שכר`;
+
+      tbody.innerHTML = tableRows.map(row => {
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="py-2 px-3 font-bold text-slate-800 font-mono">₪${row.salary.toLocaleString('he-IL')}</td>
+            ${row.values.map(v => `
+              <td class="py-2 px-3 font-bold ${v.count > 0 ? 'text-slate-900' : 'text-slate-300'} font-mono">${v.count.toLocaleString('he-IL')}</td>
+              <td class="py-2 px-3 ${v.pct > 0 ? 'text-slate-500' : 'text-slate-300'} font-mono">${v.pct > 0 ? v.pct.toFixed(2) + '%' : '-'}</td>
+            `).join('')}
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Export CSV
+    function exportCSV() {
+      const activeYears = new Set(AppState.series.map(s => s.year));
+      const usedTypes = new Set(AppState.series.map(s => s.entityType));
+      const salarySet = new Set();
+      if (usedTypes.has('rank')) {
+        AppState.rawData.forEach(d => {
+          if (activeYears.has(Number(d.SHANA)) && d.SALARY_MIDPOINT !== undefined) salarySet.add(Number(d.SALARY_MIDPOINT));
+        });
+      }
+      if (usedTypes.has('body')) {
+        Object.values(BAND_MIDPOINTS).forEach(v => salarySet.add(v));
+      }
+      const allSalarySteps = Array.from(salarySet).sort((a,b) => a - b);
+      const computedResults = AppState.series.map(s => computeSeriesData(s)).filter(r => r.visible);
+
+      let csv = '\uFEFF'; // UTF-8 BOM
+      csv += 'מדרגת שכר (₪)';
+      computedResults.forEach(r => {
+        csv += `,${r.seriesName} - כמות עובדים,${r.seriesName} - אחוז מסך הסדרה`;
+      });
+      csv += '\n';
+
+      allSalarySteps.forEach(sal => {
+        let hasData = false;
+        let line = `"${sal}"`;
+
+        computedResults.forEach(r => {
+          const b = r.bins.get(sal);
+          const count = b ? b.count : 0;
+          const pct = r.totalEmployees > 0 ? (count / r.totalEmployees) * 100 : 0;
+          if (count > 0) hasData = true;
+          line += `,"${count}","${pct.toFixed(2)}%"`;
+        });
+
+        if (hasData) {
+          csv += line + '\n';
+        }
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const yearsLabel = Array.from(activeYears).sort().join('-');
+      a.download = `השוואת_התפלגות_שכר_${yearsLabel}_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+    }
+  </script>
+</body>
+</html>

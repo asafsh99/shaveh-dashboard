@@ -52,8 +52,11 @@ window.TabDirectory = (function () {
 
       const menW = m.menCount > 0 ? m.menWageSum / m.menCount : null;
       const womenW = m.womenCount > 0 ? m.womenWageSum / m.womenCount : null;
-      const avgW = m.grossRegularCount > 0 ? (m.grossRegularSum / m.grossRegularCount) : (hc > 0 ? (m.menWageSum + m.womenWageSum) / hc : null);
-      const avgCost = m.employerCostCount > 0 ? (m.employerCostSum / m.employerCostCount) : (hc > 0 ? (m.menCostSum + m.womenCostSum) / hc : null);
+      // Fallback denominator must match the numerator's own weighting
+      // (menCount+womenCount, not monthlyCount — they can differ per row).
+      const genderHc = m.menCount + m.womenCount;
+      const avgW = m.grossRegularCount > 0 ? (m.grossRegularSum / m.grossRegularCount) : (genderHc > 0 ? (m.menWageSum + m.womenWageSum) / genderHc : null);
+      const avgCost = m.employerCostCount > 0 ? (m.employerCostSum / m.employerCostCount) : (genderHc > 0 ? (m.menCostSum + m.womenCostSum) / genderHc : null);
       const gap = (menW && womenW && menW > 0) ? ((menW - womenW) / menW) * 100 : null;
 
       return {

@@ -23,22 +23,24 @@ window.TabOverview = (function () {
 
   // ── KPIs ──────────────────────────────────────────────────────
 
-  function renderKPIs(records) {
+  function renderKPIs(records, partTimeRecords) {
     const appState = (window.App && window.App.state) || null;
-    const v = DataValidator.computeKPIs(records);
+    const hasRankFilter = Boolean(appState && appState.filters.rank && appState.filters.rank.length > 0);
 
-    const isUnfiltered = (!appState || (!appState.filters.system || appState.filters.system.length === 0) &&
-                         (!appState.filters.subSystem || appState.filters.subSystem.length === 0) &&
-                         (!appState.filters.bodyName || appState.filters.bodyName.length === 0) &&
-                         (!appState.filters.rank || appState.filters.rank.length === 0));
-    
-    const currentYear = Number(appState && appState.filters.year) || 2024;
-    const benchmark = isUnfiltered && DataValidator.TABLEAU_BENCHMARKS && DataValidator.TABLEAU_BENCHMARKS[currentYear];
+    // Wage/gap KPIs come from partTime.csv's "משרה מלאה" (full-time) columns
+    // — verified against the official public dashboard (Mifal HaPayis, Bank
+    // of Israel, Haifa municipality all reproduced within ~0.2%). overview.csv's
+    // plain "שכר ממוצע" columns run 1-8% low because they exclude "הפרשים"
+    // (retroactive/differential payments). overview.csv is only used here
+    // when a rank filter is active, since partTime.csv has no rank column.
+    const v = (hasRankFilter || !partTimeRecords || partTimeRecords.length === 0)
+      ? DataValidator.computeOverviewKPIs(records)
+      : DataValidator.computeKPIs(partTimeRecords, records);
 
-    const displayPayGap = benchmark ? benchmark.genderPayGapPercent : v.genderPayGapPercent;
-    const displayMenWage = benchmark ? benchmark.avgMenWage : v.avgMenWage;
-    const displayWomenWage = benchmark ? benchmark.avgWomenWage : v.avgWomenWage;
-    const displayOverallWage = benchmark ? benchmark.overallWage : v.overallWage;
+    const displayPayGap = v.genderPayGapPercent;
+    const displayMenWage = v.avgMenWage;
+    const displayWomenWage = v.avgWomenWage;
+    const displayOverallWage = v.overallWage;
 
     if (displayPayGap !== null) {
       document.getElementById('kpiPayGap').textContent = displayPayGap.toFixed(1) + '%';
@@ -90,17 +92,29 @@ window.TabOverview = (function () {
 
   // ── Butterfly Chart ───────────────────────────────────────────
 
-  function renderButterflyChart(records) {
+  function renderButterflyChart(records, partTimeRecords) {
     const el = document.getElementById('chartButterfly');
     if (!el) return;
+
+    const appState = (window.App && window.App.state) || null;
+    const hasRankFilter = Boolean(appState && appState.filters.rank && appState.filters.rank.length > 0);
+    const useFT = !hasRankFilter && partTimeRecords && partTimeRecords.length > 0;
 
     const systems = [...new Set(records.map(r => r.system))].filter(Boolean);
     const data = systems.map(sys => {
       const sub = records.filter(r => r.system === sys);
       const hc = sub.reduce((s, r) => s + (r.menCount || 0) + (r.womenCount || 0), 0);
-      const g = DataValidator.calculateAggregateGap(sub);
-      const mw = DataValidator.calculateWeightedAverageMenWage(sub);
-      const ww = DataValidator.calculateWeightedAverageWomenWage(sub);
+      let g, mw, ww;
+      if (useFT) {
+        const ptSub = partTimeRecords.filter(r => r.system === sys);
+        g = DataValidator.calculateFTAggregateGap(ptSub);
+        mw = DataValidator.calculateFTWeightedMenWage(ptSub);
+        ww = DataValidator.calculateFTWeightedWomenWage(ptSub);
+      } else {
+        g = DataValidator.calculateAggregateGap(sub);
+        mw = DataValidator.calculateWeightedAverageMenWage(sub);
+        ww = DataValidator.calculateWeightedAverageWomenWage(sub);
+      }
       return { system: sys, menWage: mw, womenWage: ww, gap: g, hc };
     }).filter(d => d.hc >= DataEngine.PRIVACY_THRESHOLD && d.gap !== null)
       .sort((a, b) => b.gap - a.gap);
@@ -360,46 +374,42 @@ window.TabOverview = (function () {
 
   let distributionChart = null;
 
-  function renderDistribution(records) {
+  function renderDistribution(records, partTimeRecords) {
     const el = document.getElementById('chartDistribution');
     if (!el) return;
 
     const appState = (window.App && window.App.state) || null;
-    const year = Number(appState && appState.filters.year) || 2024;
-    const benchmarks = (window.DataValidator && window.DataValidator.TABLEAU_BODY_BENCHMARKS) || window.__TABLEAU_BODY_BENCHMARKS__ || {};
+    const hasRankFilter = Boolean(appState && appState.filters.rank && appState.filters.rank.length > 0);
+    const useFT = !hasRankFilter && partTimeRecords && partTimeRecords.length > 0;
 
-    // Calculate gap for every body in the dataset
+    // Calculate gap for every body in the dataset. Headcount/menCount/
+    // womenCount always come from overview.csv (all employees); wage/gap
+    // come from partTime.csv's full-time columns when available (see
+    // renderKPIs for why), falling back to overview when a rank filter
+    // is active (partTime has no rank column).
     const bodies = [...new Set(records.map(r => r.bodyName))].filter(Boolean);
     const gaps = [];
 
     bodies.forEach(body => {
-      const bmKey = `${body}_${year}`;
-      if (benchmarks[bmKey]) {
-        const bm = benchmarks[bmKey];
-        if (bm.totalEmployees >= DataEngine.PRIVACY_THRESHOLD && bm.genderPayGapPercent !== null) {
-          gaps.push({
-            body,
-            gap: bm.genderPayGapPercent,
-            hc: bm.totalEmployees,
-            menCount: bm.menCount,
-            womenCount: bm.womenCount,
-            avgWage: bm.overallWage,
-            menWage: bm.avgMenWage,
-            womenWage: bm.avgWomenWage
-          });
-          return;
-        }
-      }
-
       const sub = records.filter(r => r.bodyName === body);
       const menCount = sub.reduce((s, r) => s + (r.menCount || 0), 0);
       const womenCount = sub.reduce((s, r) => s + (r.womenCount || 0), 0);
       const hc = menCount + womenCount;
       if (hc < DataEngine.PRIVACY_THRESHOLD) return;
-      const gap = DataValidator.calculateAggregateGap(sub);
-      const avgWage = DataValidator.calculateOverallAverageWage(sub);
-      const menWage = DataValidator.calculateWeightedAverageMenWage(sub);
-      const womenWage = DataValidator.calculateWeightedAverageWomenWage(sub);
+
+      let gap, avgWage, menWage, womenWage;
+      if (useFT) {
+        const ptSub = partTimeRecords.filter(r => r.bodyName === body);
+        gap = DataValidator.calculateFTAggregateGap(ptSub);
+        avgWage = DataValidator.calculateFTWeightedOverallWage(ptSub);
+        menWage = DataValidator.calculateFTWeightedMenWage(ptSub);
+        womenWage = DataValidator.calculateFTWeightedWomenWage(ptSub);
+      } else {
+        gap = DataValidator.calculateAggregateGap(sub);
+        avgWage = DataValidator.calculateOverallAverageWage(sub);
+        menWage = DataValidator.calculateWeightedAverageMenWage(sub);
+        womenWage = DataValidator.calculateWeightedAverageWomenWage(sub);
+      }
 
       if (gap !== null) {
         gaps.push({ body, gap, hc: Math.round(hc), menCount: Math.round(menCount), womenCount: Math.round(womenCount), avgWage, menWage, womenWage });
@@ -571,31 +581,43 @@ window.TabOverview = (function () {
 
   // ── Salary Tiers Stacked Chart ───────────────────────────────
 
-  function renderSalaryTiersChart(records) {
+  function renderSalaryTiersChart(records, partTimeRecords) {
     const el = document.getElementById('chartSalaryTiers');
     if (!el) return;
 
-    const systems = [...new Set(records.map(r => r.system))].filter(Boolean);
+    const appState = (window.App && window.App.state) || null;
+    const hasRankFilter = Boolean(appState && appState.filters.rank && appState.filters.rank.length > 0);
+    const useFT = !hasRankFilter && partTimeRecords && partTimeRecords.length > 0;
+    const T = DataValidator.PRIVACY_THRESHOLD;
+
+    const systems = useFT
+      ? [...new Set(partTimeRecords.map(r => r.system))].filter(Boolean)
+      : [...new Set(records.map(r => r.system))].filter(Boolean);
+
     const data = systems.map(sys => {
+      if (useFT) {
+        const sub = partTimeRecords.filter(r => r.system === sys);
+        const gross = DataValidator.calculateFTWeightedOverallWage(sub);
+        const taxGross = DataValidator.weightedAvg(sub, 'ftTotalTaxableGross', 'ftTotalCount', T);
+        const employerCost = DataValidator.weightedAvg(sub, 'ftTotalEmployerCost', 'ftTotalCount', T);
+        return {
+          system: sys,
+          gross: Math.round(gross),
+          taxAdd: Math.max(0, Math.round((taxGross || gross) - gross)),
+          costAdd: Math.max(0, Math.round((employerCost || taxGross || gross) - (taxGross || gross))),
+          totalCost: Math.round(employerCost || taxGross || gross)
+        };
+      }
       const sub = records.filter(r => r.system === sys);
       const gross = DataValidator.calculateOverallAverageWage(sub);
-      let taxSum = 0, costSum = 0, count = 0;
-      sub.forEach(r => {
-        const mc = r.menCount || 0, wc = r.womenCount || 0;
-        const totalC = mc + wc;
-        if (totalC > 0 && r.avgTotalTaxGross) { taxSum += r.avgTotalTaxGross * totalC; }
-        if (totalC > 0 && r.avgTotalEmployerCost) { costSum += r.avgTotalEmployerCost * totalC; }
-        if (totalC > 0 && r.avgTotalTaxGross && r.avgTotalEmployerCost) { count += totalC; }
-      });
-      const taxGross = count > 0 ? taxSum / count : gross;
-      const employerCost = count > 0 ? costSum / count : taxGross;
-
+      const taxGross = DataValidator.weightedAvg(sub, 'avgTaxableGross', 'monthlyEmployeeCount', T);
+      const employerCost = DataValidator.weightedAvg(sub, 'avgEmployerCost', 'monthlyEmployeeCount', T);
       return {
         system: sys,
         gross: Math.round(gross),
-        taxAdd: Math.max(0, Math.round(taxGross - gross)),
-        costAdd: Math.max(0, Math.round(employerCost - taxGross)),
-        totalCost: Math.round(employerCost)
+        taxAdd: Math.max(0, Math.round((taxGross || gross) - gross)),
+        costAdd: Math.max(0, Math.round((employerCost || taxGross || gross) - (taxGross || gross))),
+        totalCost: Math.round(employerCost || taxGross || gross)
       };
     }).filter(d => d.gross > 0);
 
@@ -656,14 +678,13 @@ window.TabOverview = (function () {
   let breakdownSortDir = 'desc';  // 'desc' | 'asc'
   let breakdownTopN = 15;
   let _lastBreakdownRecords = [];
+  let _lastBreakdownPartTime = [];
 
-  function _aggregateBreakdown(records, groupKey) {
-    const T = (window.DataEngine && window.DataEngine.PRIVACY_THRESHOLD) || 5;
-    const appState = (window.App && window.App.state) || null;
-    const year = Number(appState && appState.filters.year) || 2024;
-    const benchmarks = (window.DataValidator && window.DataValidator.TABLEAU_BODY_BENCHMARKS) || {};
+  // Rank-level breakdown (or any breakdown while a rank filter is active)
+  // must come from overview.csv — it's the only source with rank detail.
+  function _aggregateBreakdownFromOverview(records, groupKey) {
+    const T = DataValidator.PRIVACY_THRESHOLD;
 
-    // Aggregate directly from overview records (total workforce across all ranks)
     const map = {};
     records.forEach(r => {
       const key = r[groupKey];
@@ -679,45 +700,23 @@ window.TabOverview = (function () {
       const mc = r.menCount || 0, wc = r.womenCount || 0;
       m.menCount += Math.round(mc);
       m.womenCount += Math.round(wc);
-      if (r.avgMenWage && mc > 0)   { m.menWageSum += r.avgMenWage * mc; m.menWageCount += mc; }
-      if (r.avgWomenWage && wc > 0) { m.womenWageSum += r.avgWomenWage * wc; m.womenWageCount += wc; }
-      // Use avgGrossRegular (Tableau FTE-weighted overall wage) when available
+      if (r.avgMenWage && mc > T)   { m.menWageSum += r.avgMenWage * mc; m.menWageCount += mc; }
+      if (r.avgWomenWage && wc > T) { m.womenWageSum += r.avgWomenWage * wc; m.womenWageCount += wc; }
       const hcForGross = r.monthlyEmployeeCount || (mc + wc);
-      if (r.avgGrossRegular && hcForGross > 0) {
+      if (r.avgGrossRegular && hcForGross > T) {
         m.grossRegularSum += r.avgGrossRegular * hcForGross;
         m.grossRegularCount += hcForGross;
       }
     });
 
     return Object.values(map).map(m => {
-      const bmKey = `${m.key}_${year}`;
-      if (groupKey === 'bodyName' && benchmarks[bmKey]) {
-        const bm = benchmarks[bmKey];
-        const shares = DataValidator.computeComplementaryShares(bm.menCount, bm.womenCount, 1);
-        return {
-          key: m.key,
-          hc: bm.totalEmployees,
-          menCount: bm.menCount,
-          womenCount: bm.womenCount,
-          menPct: shares.menPct,
-          womenPct: shares.womenPct,
-          menWage: bm.avgMenWage,
-          womenWage: bm.avgWomenWage,
-          overallWage: bm.overallWage,
-          gap: bm.genderPayGapPercent
-        };
-      }
-
       const hc = Math.round(m.menCount + m.womenCount);
       if (hc < T) return null;
       const menCount = Math.round(m.menCount);
       const womenCount = Math.round(m.womenCount);
       const shares = DataValidator.computeComplementaryShares(menCount, womenCount, 1);
-      const menPct  = shares.menPct;
-      const womenPct = shares.womenPct;
       const menWage   = m.menWageCount   > 0 ? Math.round(m.menWageSum   / m.menWageCount)   : null;
       const womenWage = m.womenWageCount > 0 ? Math.round(m.womenWageSum / m.womenWageCount) : null;
-      // Prefer avgGrossRegular (Tableau FTE-weighted) for overall wage; fallback to headcount-weighted
       const overallWage = m.grossRegularCount > 0
         ? Math.round(m.grossRegularSum / m.grossRegularCount)
         : (m.menWageCount + m.womenWageCount > 0
@@ -726,23 +725,70 @@ window.TabOverview = (function () {
       const gap = (menWage != null && womenWage != null && menWage > 0)
         ? ((menWage - womenWage) / menWage) * 100
         : null;
-      return { 
-        key: m.key, 
-        hc, 
-        menCount, 
-        womenCount, 
-        menPct, 
-        womenPct, 
-        menWage, 
-        womenWage, 
-        overallWage, 
-        gap 
+      return { key: m.key, hc, menCount, womenCount, menPct: shares.menPct, womenPct: shares.womenPct, menWage, womenWage, overallWage, gap };
+    }).filter(Boolean);
+  }
+
+  // Body/system/subSystem breakdown: headcount+gender split from overview.csv
+  // (all employees), wage+gap from partTime.csv's full-time columns — see
+  // renderKPIs for why this is the source that matches the official figures.
+  function _aggregateBreakdownFromFT(overviewRecords, partTimeRecords, groupKey) {
+    const T = DataValidator.PRIVACY_THRESHOLD;
+
+    const hcMap = {};
+    overviewRecords.forEach(r => {
+      const key = r[groupKey];
+      if (!key) return;
+      if (!hcMap[key]) hcMap[key] = { menCount: 0, womenCount: 0 };
+      hcMap[key].menCount += Math.round(r.menCount || 0);
+      hcMap[key].womenCount += Math.round(r.womenCount || 0);
+    });
+
+    const wageMap = {};
+    partTimeRecords.forEach(r => {
+      const key = r[groupKey];
+      if (!key) return;
+      if (!wageMap[key]) wageMap[key] = { menWageSum: 0, menCount: 0, womenWageSum: 0, womenCount: 0, totalWageSum: 0, totalCount: 0 };
+      const m = wageMap[key];
+      if (r.ftMenWage != null && r.ftMenCount > T)     { m.menWageSum += r.ftMenWage * r.ftMenCount; m.menCount += r.ftMenCount; }
+      if (r.ftWomenWage != null && r.ftWomenCount > T) { m.womenWageSum += r.ftWomenWage * r.ftWomenCount; m.womenCount += r.ftWomenCount; }
+      if (r.ftTotalWage != null && r.ftTotalCount > T) { m.totalWageSum += r.ftTotalWage * r.ftTotalCount; m.totalCount += r.ftTotalCount; }
+    });
+
+    const keys = new Set([...Object.keys(hcMap), ...Object.keys(wageMap)]);
+    return Array.from(keys).map(key => {
+      const hcEntry = hcMap[key] || { menCount: 0, womenCount: 0 };
+      const hc = Math.round(hcEntry.menCount + hcEntry.womenCount);
+      if (hc < T) return null;
+      const shares = DataValidator.computeComplementaryShares(hcEntry.menCount, hcEntry.womenCount, 1);
+      const w = wageMap[key];
+      const menWage = w && w.menCount > 0 ? w.menWageSum / w.menCount : null;
+      const womenWage = w && w.womenCount > 0 ? w.womenWageSum / w.womenCount : null;
+      const overallWage = w && w.totalCount > 0 ? w.totalWageSum / w.totalCount : null;
+      const gap = (menWage != null && womenWage != null && menWage > 0) ? ((menWage - womenWage) / menWage) * 100 : null;
+      return {
+        key, hc, menCount: hcEntry.menCount, womenCount: hcEntry.womenCount,
+        menPct: shares.menPct, womenPct: shares.womenPct,
+        menWage: menWage != null ? Math.round(menWage) : null,
+        womenWage: womenWage != null ? Math.round(womenWage) : null,
+        overallWage: overallWage != null ? Math.round(overallWage) : null,
+        gap
       };
     }).filter(Boolean);
   }
 
-  function renderBodyBreakdown(records) {
+  function _aggregateBreakdown(records, partTimeRecords, groupKey) {
+    const appState = (window.App && window.App.state) || null;
+    const hasRankFilter = Boolean(appState && appState.filters.rank && appState.filters.rank.length > 0);
+    if (groupKey === 'rank' || hasRankFilter || !partTimeRecords || partTimeRecords.length === 0) {
+      return _aggregateBreakdownFromOverview(records, groupKey);
+    }
+    return _aggregateBreakdownFromFT(records, partTimeRecords, groupKey);
+  }
+
+  function renderBodyBreakdown(records, partTimeRecords) {
     _lastBreakdownRecords = records;
+    _lastBreakdownPartTime = partTimeRecords;
     _drawBodyBreakdownChart();
     _bindBodyBreakdownControls();
   }
@@ -751,7 +797,7 @@ window.TabOverview = (function () {
     const el = document.getElementById('chartBodyBreakdown');
     if (!el) return;
 
-    const allData = _aggregateBreakdown(_lastBreakdownRecords, breakdownType);
+    const allData = _aggregateBreakdown(_lastBreakdownRecords, _lastBreakdownPartTime, breakdownType);
 
     // Apply Sorting & Direction
     let sorted = [...allData];
@@ -1134,13 +1180,13 @@ window.TabOverview = (function () {
 
   // ── Public ────────────────────────────────────────────────────
 
-  function update(records, year) {
-    renderKPIs(records);
-    renderButterflyChart(records);
+  function update(records, partTimeRecords, year) {
+    renderKPIs(records, partTimeRecords);
+    renderButterflyChart(records, partTimeRecords);
     renderHeatmap(records);
-    renderDistribution(records);
-    renderSalaryTiersChart(records);
-    renderBodyBreakdown(records);
+    renderDistribution(records, partTimeRecords);
+    renderSalaryTiersChart(records, partTimeRecords);
+    renderBodyBreakdown(records, partTimeRecords);
     renderInsights(records, year);
   }
 

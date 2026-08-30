@@ -73,8 +73,15 @@ window.InsightsEngine = (function () {
     const totWomen = records.reduce((s, r) => s + (r.womenCount || 0), 0);
     const totEmpAll = Math.round(totMen + totWomen);
 
+    // Wage/gap figures come from partTime.csv's full-time ("משרה מלאה")
+    // columns whenever possible — verified against the official public
+    // dashboard within ~0.2% (overview.csv's plain wage columns exclude
+    // retroactive/differential payments and run 1-8% low). overview.csv is
+    // only used as a fallback when a rank filter is active, since
+    // partTime.csv has no rank column.
+    let ptFiltered = null;
     if (!hasRankFilter && ptData && ptData.length > 0) {
-      let ptFiltered = ptData.filter(r => r.year === Number(year));
+      ptFiltered = ptData.filter(r => r.year === Number(year));
       if (appState.filters.system && appState.filters.system.length > 0) {
         ptFiltered = ptFiltered.filter(r => appState.filters.system.includes(r.system));
       }
@@ -84,25 +91,13 @@ window.InsightsEngine = (function () {
       if (appState.filters.bodyName && appState.filters.bodyName.length > 0) {
         ptFiltered = ptFiltered.filter(r => appState.filters.bodyName.includes(r.bodyName));
       }
+    }
 
-      let ft_ms = 0, ft_mc = 0, ft_ws = 0, ft_wc = 0, ft_tc = 0, ft_w_tot = 0;
-      ptFiltered.forEach(r => {
-        const mc = r.ftMenCount || 0, wc = r.ftWomenCount || 0, tc = r.ftTotalCount || (mc + wc);
-        ft_w_tot += wc;
-        ft_tc += tc;
-        if (r.ftMenWage && mc > 0) { ft_ms += r.ftMenWage * mc; ft_mc += mc; }
-        if (r.ftWomenWage && wc > 0) { ft_ws += r.ftWomenWage * wc; ft_wc += wc; }
-      });
-      const isUnfiltered = (!appState.filters.system || appState.filters.system.length === 0) &&
-                           (!appState.filters.subSystem || appState.filters.subSystem.length === 0) &&
-                           (!appState.filters.bodyName || appState.filters.bodyName.length === 0) &&
-                           (!appState.filters.rank || appState.filters.rank.length === 0);
-      const benchmark = isUnfiltered && window.DataValidator && window.DataValidator.TABLEAU_BENCHMARKS && window.DataValidator.TABLEAU_BENCHMARKS[Number(year)];
-
-      mw = benchmark ? benchmark.avgMenWage : (ft_mc > 0 ? ft_ms / ft_mc : null);
-      ww = benchmark ? benchmark.avgWomenWage : (ft_wc > 0 ? ft_ws / ft_wc : null);
-      g = benchmark ? benchmark.genderPayGapPercent : gap(mw, ww);
-      totalFt = Math.round(ft_tc);
+    if (ptFiltered) {
+      mw = DataValidator.calculateFTWeightedMenWage(ptFiltered);
+      ww = DataValidator.calculateFTWeightedWomenWage(ptFiltered);
+      g = DataValidator.calculateFTAggregateGap(ptFiltered);
+      totalFt = Math.round(ptFiltered.reduce((s, r) => s + (r.ftTotalCount || (r.ftMenCount || 0) + (r.ftWomenCount || 0)), 0));
       ws = totEmpAll > 0 ? (totWomen / totEmpAll) * 100 : null;
 
       lines.push(`<strong>בשנת ${year}</strong>, פער השכר המגדרי למשרה מלאה עומד על <strong class="text-rose-600">${fmtPct(g)}</strong>.`);
@@ -120,15 +115,22 @@ window.InsightsEngine = (function () {
       lines.push(`סה"כ ${fmt(totalFt)} עובדים בדירוג, מתוכם ${fmtPct(ws)} נשים.`);
     }
 
-    // Find system with largest gap
+    // Find system with largest gap (same source as the headline figure above)
     const systems = [...new Set(records.map(r => r.system))].filter(Boolean);
     let maxGapSys = null, maxGapVal = -Infinity;
     let minGapSys = null, minGapVal = Infinity;
 
     systems.forEach(sys => {
-      const sub = records.filter(r => r.system === sys);
-      if (headcount(sub) < T) return;
-      const sg = gap(wAvgMen(sub), wAvgWomen(sub));
+      let sg;
+      if (ptFiltered) {
+        const ptSub = ptFiltered.filter(r => r.system === sys);
+        if (ptSub.reduce((s, r) => s + (r.ftMenCount || 0) + (r.ftWomenCount || 0), 0) < T) return;
+        sg = DataValidator.calculateFTAggregateGap(ptSub);
+      } else {
+        const sub = records.filter(r => r.system === sys);
+        if (headcount(sub) < T) return;
+        sg = gap(wAvgMen(sub), wAvgWomen(sub));
+      }
       if (sg != null && sg > maxGapVal) { maxGapVal = sg; maxGapSys = sys; }
       if (sg != null && sg < minGapVal) { minGapVal = sg; minGapSys = sys; }
     });

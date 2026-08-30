@@ -336,7 +336,7 @@ window.TabRanks = (function () {
         womenWage: Math.round(womenWage),
         menCount,
         womenCount,
-        gap: gap.toFixed(1),
+        gap: Math.round(gap * 10) / 10,
         hc
       };
     }).filter(Boolean)

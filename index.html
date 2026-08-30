@@ -26,16 +26,34 @@
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
     /* Native select fallback styling */
     select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 0.75rem center; padding-left: 2rem; }
-    
+
     .insight-panel { background-image: linear-gradient(to bottom right, #f8fafc, #f1f5f9); }
     .loading-pulse { animation: pulse-ring 1.5s ease-in-out infinite; }
     @keyframes pulse-ring { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* Scoped to the embedded distribution/layers studio only (digital-salary tab) - these
+       rules deliberately do not touch the bare `select`/`input[type=range]` elements
+       elsewhere in the dashboard. */
+    #dsStudioRoot .glass-panel { background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.9); }
+    #dsStudioRoot .series-card { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+    #dsStudioRoot .series-card:hover { border-color: #cbd5e1; transform: translateY(-1px); }
+    #dsStudioRoot input[type=range] { accent-color: #2563eb; }
+    #dsStudioRoot select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: left 0.75rem center;
+      padding-left: 2.2rem;
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased">
@@ -74,6 +92,7 @@
         <a href="#quality" id="nav-quality" class="whitespace-nowrap px-1 py-3 border-b-2 font-medium text-sm transition-colors text-slate-500 border-transparent hover:border-slate-300">איכות התעסוקה</a>
         <a href="#trends" id="nav-trends" class="whitespace-nowrap px-1 py-3 border-b-2 font-medium text-sm transition-colors text-slate-500 border-transparent hover:border-slate-300">מגמות ותוצאות</a>
         <a href="#directory" id="nav-directory" class="whitespace-nowrap px-1 py-3 border-b-2 font-medium text-sm transition-colors text-slate-500 border-transparent hover:border-slate-300">ספריית גופים ודירוגים</a>
+        <a href="#digitalsalary" id="nav-digitalsalary" class="whitespace-nowrap px-1 py-3 border-b-2 font-medium text-sm transition-colors text-slate-500 border-transparent hover:border-slate-300">שכר דיגיטלי</a>
       </nav>
 
       <!-- Global Filter Bar -->
@@ -152,7 +171,30 @@
 
     <!-- TAB 1: OVERVIEW -->
     <div id="tab-overview" class="space-y-6">
-      
+
+      <!-- Methodology Note -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">מתודולוגיית החישוב — טאב זה</h3>
+            <p class="text-xs text-slate-500 max-w-3xl leading-relaxed">
+              כל המספרים בטאב זה מחושבים ישירות מ-4 קבצי הדאטה (ללא ערכים קשיחים). כרטיסי ה-KPI, גרף הפרפר וגרפי הפילוח מבוססים בעיקר על <strong>נתוני חלקיות משרה — עמודות "משרה מלאה"</strong>.
+            </p>
+          </div>
+          <button class="btnMethodology shrink-0 h-8 px-3 rounded-lg text-xs font-semibold text-brand-600 bg-brand-50 border border-brand-100 hover:bg-brand-100 transition-colors" data-target="methPanel-overview">
+            ⓘ מתודולוגיית החישוב
+          </button>
+        </div>
+        <div id="methPanel-overview" class="hidden mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600 leading-relaxed space-y-1.5">
+          <p><strong>שכר ממוצע ופער מגדרי (כרטיסי KPI, גרף פרפר, היסטוגרמת פערים, פילוח לפי גוף/מערכת):</strong> מחושבים מקובץ <code class="bg-slate-100 px-1 rounded">נתוני חלקיות משרה</code>, מעמודות <code class="bg-slate-100 px-1 rounded">ftMenWage</code>/<code class="bg-slate-100 px-1 rounded">ftWomenWage</code> ("ברוטו שוטף והפרשים במשרה מלאה") — ממוצע משוקלל לפי מספר עובדים, כשמדובר רק בשורות עם למעלה מ-5 עובדים (למניעת עיוות מקבוצות קטנות מדי). זו העמודה שנמצאה תואמת כמעט באופן מדויק (הפרש 0.1%-0.2%) לדשבורד הרשמי של האוצר בטאבלו, כי היא <strong>כוללת הפרשים/רטרו</strong> — לעומת עמודת "שכר ממוצע" הפשוטה בקובץ "סקירה כללית" שלא כוללת אותם ולכן נמוכה יותר בכ-1%-8% (תלוי בגוף).</p>
+          <p><strong>חריגה:</strong> כשמסננים לפי <strong>דירוג</strong> ספציפי, המספרים עוברים לחישוב מקובץ <code class="bg-slate-100 px-1 rounded">נתוני סקירה כללית</code> (כי לקובץ "חלקיות משרה" אין פירוט דירוגים) — ולכן עלולים להיראות מעט שונים (בדרך כלל נמוכים יותר) מהתצוגה הכללית, מהסיבה שלמעלה.</p>
+          <p><strong>פער מגדרי %:</strong> <code class="bg-slate-100 px-1 rounded">(שכר_גברים − שכר_נשים) / שכר_גברים × 100</code>, על שורות שבהן דווח שכר לשני המגדרים גם יחד (נמנע מהשוואת "תפוחים לתפוזים" בין קבוצות שדיווחו רק גברים או רק נשים).</p>
+          <p><strong>מפת החום (פער לפי גוף ודירוג):</strong> תמיד מ"סקירה כללית" — זהו המקור היחיד עם פירוט ברמת גוף×דירוג גם יחד.</p>
+          <p><strong>מבנה השכר (שוטף/מס/עלות מעסיק):</strong> שלוש השכבות מגיעות מעמודות ה-FT המקבילות בקובץ "חלקיות משרה" (<code class="bg-slate-100 px-1 rounded">ftTotalWage</code> → <code class="bg-slate-100 px-1 rounded">ftTotalTaxableGross</code> → <code class="bg-slate-100 px-1 rounded">ftTotalEmployerCost</code>), כל שכבה כתוספת מעל הקודמת.</p>
+          <p class="text-amber-700"><strong>שקיפות:</strong> אין בטאב זה אף ערך קשיח/מועתק — כולם מחושבים בזמן אמת מהקבצים הטעונים. המספרים עשויים להיות שונים במעט (בדרך כלל פחות מ-0.5%) מהמוצג בדשבורד הרשמי של משרד האוצר, בשל הבדלי מועד/גרסה בין ייצוא הקבצים למערכת החיה.</p>
+        </div>
+      </div>
+
       <!-- KPIs -->
       <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <!-- Card 1: Pay Gap -->
@@ -319,6 +361,27 @@
 
     <!-- TAB 2: RANKS -->
     <div id="tab-ranks" class="hidden space-y-6">
+
+      <!-- Methodology Note -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">מתודולוגיית החישוב — טאב זה</h3>
+            <p class="text-xs text-slate-500 max-w-3xl leading-relaxed">
+              כל גרפי הטאב הזה (פיזור, לוליפופ, היררכיית דירוגים) מבוססים על <strong>קובץ "סקירה כללית" בלבד</strong> — זהו המקור היחיד שיש בו פירוט ברמת דירוג.
+            </p>
+          </div>
+          <button class="btnMethodology shrink-0 h-8 px-3 rounded-lg text-xs font-semibold text-brand-600 bg-brand-50 border border-brand-100 hover:bg-brand-100 transition-colors" data-target="methPanel-ranks">
+            ⓘ מתודולוגיית החישוב
+          </button>
+        </div>
+        <div id="methPanel-ranks" class="hidden mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600 leading-relaxed space-y-1.5">
+          <p><strong>שכר ופער לפי דירוג:</strong> ממוצע משוקלל לפי מספר עובדים מעמודות <code class="bg-slate-100 px-1 rounded">שכר גברים/נשים ממוצע</code> ב"סקירה כללית", כולל רק שורות עם למעלה מ-5 עובדים ורק שורות שיש בהן דיווח לשני המגדרים גם יחד (למניעת "תפוחים ותפוזים").</p>
+          <p><strong>שימו לב:</strong> עמודת "שכר ממוצע" הפשוטה הזו אינה כוללת הפרשים/תשלומי רטרו (בניגוד לעמודות "משרה מלאה" בקובץ "חלקיות משרה" המשמשות בטאב "סקירה כללית") — לכן מספרי שכר לפי דירוג עשויים להיראות נמוכים במעט משכר מקביל ברמת גוף/מערכת בטאב הראשון. אין דרך להימנע מכך: לקובץ "חלקיות משרה" אין פירוט דירוגים בכלל.</p>
+          <p><strong>היררכיית הדירוגים (הגרף התחתון):</strong> כדי לא להציף את הגרף בעשרות דירוגים זניחים, סף הכניסה הוא 100 עובדים לפחות כשאין סינון פעיל, ויורד ל-5 (סף הפרטיות הרגיל) ברגע שמסננים למערכת/גוף/דירוג ספציפיים.</p>
+        </div>
+      </div>
+
       <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm relative group overflow-hidden">
           <!-- Scatter Reset Button -->
@@ -359,6 +422,27 @@
 
     <!-- TAB 3: QUALITY -->
     <div id="tab-quality" class="hidden space-y-6">
+
+      <!-- Methodology Note -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">מתודולוגיית החישוב — טאב זה</h3>
+            <p class="text-xs text-slate-500 max-w-3xl leading-relaxed">
+              הטאב הזה עוסק במפורש בהשוואת <strong>משרה מלאה מול חלקית</strong> ובמקבלי שכר נמוך/השלמה למינימום — משתמש בקבצים ייעודיים, לא בפער השכר הכללי מהטאבים האחרים.
+            </p>
+          </div>
+          <button class="btnMethodology shrink-0 h-8 px-3 rounded-lg text-xs font-semibold text-brand-600 bg-brand-50 border border-brand-100 hover:bg-brand-100 transition-colors" data-target="methPanel-quality">
+            ⓘ מתודולוגיית החישוב
+          </button>
+        </div>
+        <div id="methPanel-quality" class="hidden mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600 leading-relaxed space-y-1.5">
+          <p><strong>שיעור עובדים במשרה חלקית (עמודות מוערמות):</strong> מקובץ <code class="bg-slate-100 px-1 rounded">נתוני חלקיות משרה</code> — <code class="bg-slate-100 px-1 rounded">ptMenCount</code>/<code class="bg-slate-100 px-1 rounded">ptWomenCount</code> כאחוז מתוך <code class="bg-slate-100 px-1 rounded">ftCount+ptCount</code> לאותו מגדר, לפי מערכת.</p>
+          <p><strong>פער שכר מלאה מול חלקית (דמבל):</strong> ממוצע משוקלל לפי מספר עובדים על עמודות <code class="bg-slate-100 px-1 rounded">ftMenWage</code>/<code class="bg-slate-100 px-1 rounded">ptMenWage</code> (וכנ"ל לנשים), רק במערכות שיש בהן דיווח לכל ארבעת הערכים גם יחד.</p>
+          <p><strong>אנומליית השלמה למינימום (בועות):</strong> משלב בין <code class="bg-slate-100 px-1 rounded">נתוני מקבלי השלמה למינימום</code> (שיעור העובדים המקבלים השלמה, לפי גוף) לבין השכר הממוצע הכללי של אותו גוף מ"סקירה כללית" — רק גופים עם 5+ עובדים ונתוני שכר זמינים.</p>
+        </div>
+      </div>
+
       <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
           <div id="chartStacked" style="height: 380px;"></div>
@@ -374,6 +458,27 @@
 
     <!-- TAB 4: TRENDS & MULTI-ENTITY COMPARATOR -->
     <div id="tab-trends" class="hidden space-y-6">
+
+      <!-- Methodology Note -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">מתודולוגיית החישוב — טאב זה</h3>
+            <p class="text-xs text-slate-500 max-w-3xl leading-relaxed">
+              מקור הנתונים שונה בהתאם לסוג הישות שבחרתם להשוואה — "גוף"/"מערכת" מול "דירוג" — כי לא לכל הקבצים יש אותה רמת פירוט.
+            </p>
+          </div>
+          <button class="btnMethodology shrink-0 h-8 px-3 rounded-lg text-xs font-semibold text-brand-600 bg-brand-50 border border-brand-100 hover:bg-brand-100 transition-colors" data-target="methPanel-trends">
+            ⓘ מתודולוגיית החישוב
+          </button>
+        </div>
+        <div id="methPanel-trends" class="hidden mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600 leading-relaxed space-y-1.5">
+          <p><strong>גוף / מערכת:</strong> שכר ופער מחושבים מ"נתוני חלקיות משרה", עמודות "משרה מלאה" (<code class="bg-slate-100 px-1 rounded">ftMenWage</code>/<code class="bg-slate-100 px-1 rounded">ftWomenWage</code>) — זו העמודה שנמצאה תואמת כמעט במדויק לדשבורד הרשמי (ראו הסבר מלא בטאב "סקירה כללית"). מספר העובדים המוצג הוא כלל המועסקים (מ"סקירה כללית"), לא רק משרה מלאה.</p>
+          <p><strong>דירוג:</strong> מחושב תמיד מ"סקירה כללית" — קובץ "חלקיות משרה" לא כולל פירוט דירוגים בכלל, אז אין ברירה אחרת.</p>
+          <p><strong>קו "ממוצע ארצי" (גרף מסלול ההתפתחות):</strong> מחושב בזמן אמת מכלל השורות ב"חלקיות משרה" לאותה שנה — לא ערך קשיח.</p>
+          <p><strong>סף:</strong> כל החישובים כוללים רק שורות עם למעלה מ-5 עובדים.</p>
+        </div>
+      </div>
 
       <!-- SECTION 1: FLEXIBLE MULTI-ENTITY COMPARISON STUDIO -->
       <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5 space-y-5">
@@ -503,6 +608,27 @@
 
     <!-- TAB 5: DIRECTORY / SEARCHABLE TABLE -->
     <div id="tab-directory" class="hidden space-y-6">
+
+      <!-- Methodology Note -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">מתודולוגיית החישוב — טאב זה</h3>
+            <p class="text-xs text-slate-500 max-w-3xl leading-relaxed">
+              הטבלה מציגה שורה לכל צירוף גוף×דירוג — מבוססת <strong>אך ורק</strong> על קובץ "סקירה כללית", המקור היחיד ברמת הפירוט הזו.
+            </p>
+          </div>
+          <button class="btnMethodology shrink-0 h-8 px-3 rounded-lg text-xs font-semibold text-brand-600 bg-brand-50 border border-brand-100 hover:bg-brand-100 transition-colors" data-target="methPanel-directory">
+            ⓘ מתודולוגיית החישוב
+          </button>
+        </div>
+        <div id="methPanel-directory" class="hidden mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600 leading-relaxed space-y-1.5">
+          <p><strong>שכר ממוצע ועלות העסקה:</strong> ממוצע משוקלל לפי מספר עובדים; מעדיף את עמודת <code class="bg-slate-100 px-1 rounded">ממוצע ברוטו שוטף והפרשים</code> (משוקללת לפי מספר עובדים ממוצע לחודש) ונופל חזרה לשקלול שכר גברים+נשים אם היא חסרה.</p>
+          <p><strong>פער מגדרי %:</strong> מחושב מהשכר הממוצע לגברים ולנשים באותה שורה בלבד — <code class="bg-slate-100 px-1 rounded">(שכר_גברים − שכר_נשים) / שכר_גברים × 100</code>.</p>
+          <p><strong>שימו לב:</strong> מכיוון שזו עמודת "שכר ממוצע" הפשוטה (ולא עמודות "משרה מלאה" הכוללות הפרשים, כמו בטאב "סקירה כללית") — סכימת השורות של גוף מסוים לא בהכרח תשווה בדיוק לשכר הכולל שמוצג עבורו בטאב הראשון.</p>
+        </div>
+      </div>
+
       <div class="bg-white rounded-xl border border-slate-200 p-5 flex items-center justify-between gap-4 shadow-sm flex-wrap">
         <div>
           <h3 class="text-base font-bold text-slate-800 mb-1">ספריית גופים ודירוגים — גילוי מלא סעיף 33א</h3>
@@ -532,6 +658,565 @@
           <tbody id="directoryTableBody" class="divide-y divide-slate-100"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- TAB 6: DIGITAL SALARY — RANGES & TIERS (independent dataset, 2024 only) -->
+    <div id="tab-digitalsalary" class="hidden space-y-6">
+
+      <!-- Intro / Methodology Note -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">טווחי שכר ורבדי שכר — נתוני "שכר דיגיטלי", 2018–2025</h3>
+            <p class="text-xs text-slate-500 max-w-3xl leading-relaxed">
+              מסך זה עצמאי משאר הדשבורד: הוא מבוסס <strong>אך ורק</strong> על קובץ הנתונים <code class="bg-slate-100 px-1 rounded">שכר דיגיטלי מגויר2018-2025- עדי ואסף (1).xlsx</code>,
+              ואינו מושפע מסינוני השנה/מערכת/גוף/דירוג שבסרגל העליון (יש למסך זה שנה, קבוצה וסינון עצמאיים משלו). הנתונים מוצגים ברמת <strong>קבוצה (KVUTZA)</strong> — כלומר אשכול המעסיקים (משרדי ממשלה, שלטון מקומי, מערכת הבריאות וכו') —
+              ובתוך כל קבוצה ניתן לצפות ב<strong>תצוגה כוללת של הקבוצה</strong>, ב<strong>פירוט לפי דירוג מקצועי</strong>, או ב<strong>פירוט לפי גוף בודד</strong> (עירייה/חברה/משרד ספציפי) בתוכה — ללא שילוב בין השלושה.
+              <strong class="text-amber-700">שימו לב:</strong> שנת 2025 חלקית, וב-2018–2019 רק 4 מתוך 8 הקבוצות מדווחות — ראו הרחבה במתודולוגיה.
+            </p>
+          </div>
+          <button id="btnDigitalSalaryMethodology" class="shrink-0 h-8 px-3 rounded-lg text-xs font-semibold text-brand-600 bg-brand-50 border border-brand-100 hover:bg-brand-100 transition-colors">
+            ⓘ מתודולוגיית החישוב
+          </button>
+        </div>
+        <div id="digitalSalaryMethodologyPanel" class="hidden mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600 leading-relaxed space-y-1.5">
+          <p><strong>מספר משרות:</strong> סכום עמודת <code class="bg-slate-100 px-1 rounded">COUNT_OVEDIM</code> על פני כל טווחי השכר (וכן דירוגים/גופים/מגדרים, בהתאם לרמת הצבירה).</p>
+          <p><strong>שכר חודשי ממוצע:</strong> סך <code class="bg-slate-100 px-1 rounded">SUM_BRUTO_SHOTEF_HEFRESHIM</code> (ברוטו שוטף והפרשים) חלקי סך <code class="bg-slate-100 px-1 rounded">COUNT_MISPAR_OVED</code> (חודשי-משרה) — ממוצע משוקלל לפי משרה, לא ממוצע פשוט של תאים. <strong>לא</strong> נעשה שימוש בעמודת <code class="bg-slate-100 px-1 rounded">AVG_SACHAR_P</code> המקורית, מכיוון שבבדיקה נמצא כי ערכה קבוע לכל שורות אותה קבוצה (KVUTZA) באותה שנה בלבד ואינו משתנה בין דירוגים/גופים — כלומר אינו שכר ממוצע אמיתי ברמת הדירוג/הגוף.</p>
+          <p><strong>עלות העסקה ממוצעת:</strong> אותו חישוב, מתוך עמודת <code class="bg-slate-100 px-1 rounded">SUM_ALUT_HAASAKA</code> (כולל הפרשות מעסיק, פנסיה וכו').</p>
+          <p><strong>רבדי שכר (4 רבדים, % מהברוטו):</strong> "יסוד ותוספות" = <code class="bg-slate-100 px-1 rounded">total_sachar_mshulav + total_salary_additions</code>; "עבודה נוספת" = <code class="bg-slate-100 px-1 rounded">total_additional_work</code>; "החזר הוצאות" = <code class="bg-slate-100 px-1 rounded">total_expense_refund</code>; "תשלומים והפרשים" = <code class="bg-slate-100 px-1 rounded">total_other_payments</code>. כל רובד מחושב כאחוז מסכום ארבעת הרבדים יחד (כך שהם מסתכמים תמיד ל-100%).</p>
+          <p><strong>טווחי שכר:</strong> התפלגות מספר המשרות (COUNT_OVEDIM) לפי 11 רצועות שכר ברוטו חודשי קבועות (עד 8,000 ₪ ועד מעל 44,000 ₪), כפי שהוגדרו בקובץ המקור בעמודת <code class="bg-slate-100 px-1 rounded">kvuza_tvach</code>. אלו רצועות שכר קבועות (בנקאות בשקלים), ולא עשירוני אוכלוסייה סטטיסטיים (10% שווים כל אחד).</p>
+          <p><strong>גוף (חדש):</strong> עמודת <code class="bg-slate-100 px-1 rounded">MISRAD_GROUP</code> בגיליון "גוף" של קובץ המקור — שם המעסיק הספציפי (עירייה, חברה ממשלתית, בית חולים וכו'). חלק מהחברות הממשלתיות הקטנות מופיעות בשם "אנונימי" בקובץ המקור עצמו (הסתרת זהות ע"י מפרסם הנתונים), לא שינוי שלנו.</p>
+          <p><strong class="text-amber-700">שנים וכיסוי:</strong> הקובץ כולל 2018–2025, אך הכיסוי אינו אחיד: ב-2018–2019 מדווחות רק 4 קבוצות (משרדי ממשלה, בטחוניים, מערכת הבריאות, מערכת החינוך) — 4 הקבוצות האחרות (שלטון מקומי, חברות ממשלתיות, תאגידים, גופים נתמכים בהשכלה גבוהה) מתחילות ב-2020. בגיליון הדירוגים חל זינוק חד במספר המשרות בין 2023 (כ-150 אלף) ל-2024 (כ-807 אלף) שנראה כשיפור כיסוי דיווח ולא כצמיחה כלכלית אמיתית — לכן <strong>ברירת המחדל היא 2024</strong> (השנה המלאה והעדכנית ביותר), והשוואות בין שנים צריכות להיעשות בזהירות. 2025 חלקית — לא כל המערכות דיווחו (למשל מערכת הבריאות מציגה 0 בשני הגיליונות ב-2025), ומסומנת "(חלקי)" בבורר השנה.</p>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-wrap items-center gap-4">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold text-slate-700">שנה:</label>
+          <select id="selectDsYear" class="h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-800 shadow-sm min-w-[110px]"></select>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold text-slate-700">בחר קבוצה:</label>
+          <select id="selectDsGroup" class="h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-800 shadow-sm min-w-[220px]"></select>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold text-slate-700">רמת פירוט:</label>
+          <div class="flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+            <button id="btnDsModeOverall" class="btnDsMode px-3 py-1.5 text-xs font-bold rounded-md transition-colors bg-white text-slate-900 shadow-xs" data-mode="overall">תצוגה כוללת (כלל הקבוצה)</button>
+            <button id="btnDsModeRank" class="btnDsMode px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-slate-600 hover:text-slate-900" data-mode="rank">לפי דירוג מקצועי</button>
+            <button id="btnDsModeBody" class="btnDsMode px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-slate-600 hover:text-slate-900" data-mode="body">לפי גוף</button>
+          </div>
+        </div>
+
+        <div id="dsRankSelectWrap" class="hidden flex-col gap-1">
+          <label class="text-xs font-bold text-slate-700">בחר דירוג:</label>
+          <select id="selectDsRank" class="h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-800 shadow-sm min-w-[220px]"></select>
+        </div>
+
+        <div id="dsBodySelectWrap" class="hidden flex-col gap-1">
+          <label class="text-xs font-bold text-slate-700">בחר גוף:</label>
+          <select id="selectDsBody" class="h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-800 shadow-sm min-w-[260px]"></select>
+        </div>
+      </section>
+
+      <!-- KPIs -->
+      <section class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="bg-white rounded-xl border border-slate-200/90 p-4 shadow-xs">
+          <div class="text-xs font-semibold text-slate-500 mb-1">מספר משרות</div>
+          <div id="dsKpiHeadcount" class="text-2xl font-extrabold text-slate-800">--</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200/90 p-4 shadow-xs">
+          <div class="text-xs font-semibold text-slate-500 mb-1">שכר חודשי ממוצע</div>
+          <div id="dsKpiWage" class="text-2xl font-extrabold text-slate-800">--</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200/90 p-4 shadow-xs">
+          <div class="text-xs font-semibold text-slate-500 mb-1">עלות העסקה ממוצעת</div>
+          <div id="dsKpiCost" class="text-2xl font-extrabold text-slate-800">--</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200/90 p-4 shadow-xs">
+          <div class="text-xs font-semibold text-slate-500 mb-1 flex items-center justify-between">
+            <span>שכר גברים ממוצע</span><span class="w-2 h-2 rounded-full bg-blue-600"></span>
+          </div>
+          <div id="dsKpiMenWage" class="text-lg font-extrabold text-blue-700">--</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200/90 p-4 shadow-xs">
+          <div class="text-xs font-semibold text-slate-500 mb-1 flex items-center justify-between">
+            <span>שכר נשים ממוצע</span><span class="w-2 h-2 rounded-full bg-pink-600"></span>
+          </div>
+          <div id="dsKpiWomenWage" class="text-lg font-extrabold text-pink-600">--</div>
+        </div>
+      </section>
+
+      <!-- Charts -->
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div class="flex justify-end mb-1">
+            <div class="flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-lg p-1">
+              <button id="btnDsBandModeStack" class="btnDsBandMode px-2.5 py-1 text-xs font-bold rounded transition-colors bg-white text-slate-900 shadow-xs" data-bandmode="stack">מוערם (כמות)</button>
+              <button id="btnDsBandModeStack100" class="btnDsBandMode px-2.5 py-1 text-xs font-medium rounded transition-colors text-slate-600 hover:bg-white" data-bandmode="stack100">מוערם (100%)</button>
+            </div>
+          </div>
+          <div id="chartDsBands" style="height: 410px;"></div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div id="chartDsLayers" style="height: 430px;"></div>
+        </div>
+      </section>
+
+      <!-- Rank comparison (visible only in "by rank" mode) -->
+      <section id="dsRankCompareSection" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <div id="chartDsRankCompare" style="height: 480px; width: 100%;"></div>
+      </section>
+
+      <!-- Body comparison (visible only in "by body" mode) -->
+      <section id="dsBodyCompareSection" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <div id="chartDsBodyCompare" style="height: 480px; width: 100%;"></div>
+      </section>
+
+<div id="dsStudioRoot">
+  <!-- Header -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-5">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <!-- Logo & Title -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+            <i data-lucide="waves" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                סטודיו החלקה והשוואת שכר
+              </h1>
+            </div>
+            <p class="text-xs text-slate-500 font-normal">
+              השוואת התפלגויות שכר רציפות ומדויקות בין דירוגים, מגדר, קבוצות מגזריות ושנים (2018–2025)
+            </p>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <button id="btnExportImage" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 shadow-sm transition-colors">
+            <i data-lucide="download" class="w-3.5 h-3.5 text-slate-500"></i>
+            ייצוא גרף (PNG)
+          </button>
+          <button id="btnExportCSV" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium shadow-sm shadow-blue-600/20 transition-colors">
+            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+            ייצוא נתונים (CSV)
+          </button>
+        </div>
+      </div>
+  </div>
+
+  <!-- Presets Quick Bar -->
+  <div class="bg-slate-100/80 rounded-xl p-3 mb-5 flex items-center justify-between gap-4 overflow-x-auto">
+      <div class="flex items-center gap-2 shrink-0 overflow-x-auto">
+        <span class="text-xs font-bold text-slate-500 flex items-center gap-1 shrink-0">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i>
+          השוואות מהירות (Presets):
+        </span>
+        <div id="presetButtonsContainer" class="flex items-center gap-2">
+          <!-- Populated dynamically by JS - the preset list depends on the דירוג/גוף toggle -->
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 font-medium shrink-0">
+        <span id="totalRecordsBadge" class="bg-white border border-slate-200 px-2 py-0.5 rounded-full font-bold text-slate-700">0</span>
+        רשומות במאגר
+      </div>
+  </div>
+
+  <!-- Main Container -->
+  <div>
+
+    <!-- Methodology Note -->
+    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm mb-5">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h3 class="text-base font-bold text-slate-800 mb-1">מתודולוגיית החישוב — סטודיו ההחלקה</h3>
+          <p class="text-xs text-slate-500 max-w-3xl leading-relaxed">
+            עקומות ההתפלגות מבוססות על היסטוגרמת שכר אמיתית ברמת שנה × דירוג × קבוצה × מגדר × מדרגת-שכר (2018-2025), עם 3 שיטות החלקה שונות להצגה חזותית ואפשרות להשוות אותה סדרה בין שנים שונות.
+          </p>
+        </div>
+        <button id="btnSmoothingMethodology" class="shrink-0 h-8 px-3 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors">
+          ⓘ מתודולוגיית החישוב
+        </button>
+      </div>
+      <div id="smoothingMethodologyPanel" class="hidden mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600 leading-relaxed space-y-1.5">
+        <p><strong>שני מקורות דאטה - דירוגים מול גופים (הבורר הגלובלי "דירוג/גוף" מעל רשימת הסדרות):</strong> הבחירה בין דירוג לגוף היא <strong>גלובלית לכל הסדרות יחד, לא לכל סדרה בנפרד</strong> — כי מדובר בשתי רמות דיוק שונות לגמרי של אותה שאלה, ולכן לא ניתן לשלב דירוג וגוף על אותו גרף (החלפת הבורר מאפסת את כל הסדרות לברירת המחדל של הסוג החדש).</p>
+        <ul class="list-disc pr-5 space-y-1">
+          <li><strong>דירוג (עקומה רציפה):</strong> קובץ <code class="bg-slate-100 px-1 rounded">data/DOCH1_DENSITY_FINAL.xlsx</code> — היסטוגרמת שכר אמיתית (bin-level) לשנים <strong>2018–2025</strong>, ברמת שנה × דירוג × קבוצה מגזרית × מגדר × מדרגת שכר מדויקת (כ-37,000 שורות לאחר סינון פרטיות, 82 דירוגים). נטען ע"י <code class="bg-slate-100 px-1 rounded">scripts/dev/build_smoothing_bundle.py</code>. הגרף מוצג כעקומת קו רציפה עם אפשרויות החלקה (ראו בהמשך).</li>
+          <li><strong>גוף (11 רצועות בדידות):</strong> קובץ <code class="bg-slate-100 px-1 rounded">data/שכר דיגיטלי מגויר2018-2025- עדי ואסף (2).xlsx</code>, גיליון <strong>"גוף"</strong> — אותן 8 שנים, מאות גופים, אבל <strong>ברמת דיוק נמוכה משמעותית</strong>: המקור מדווח לכל גוף רק לאיזו מ-11 רצועות שכר קבועות (עד 8,000 ₪, 8-12 אלף, ... מעל 44,000 ₪) שייכים עובדיו, לא מדרגת שכר מדויקת. <strong>אין כאן רצף אמיתי להחליק</strong> — לכן במצב "גוף" הגרף עובר אוטומטית לתצוגת עמודות בדידות (עמודה אחת לכל רצועה, לא קו), ופאנל אלגוריתמי ההחלקה מושבת כליל. נטען ע"י <code class="bg-slate-100 px-1 rounded">scripts/dev/build_smoothing_body_bundle.py</code>.</li>
+        </ul>
+        <p><strong>ההבדלים בין שני המצבים לא נעצרים בגרף:</strong> שדה בחירת הישות בכרטיס הסדרה משתנה גם הוא — במצב "דירוג" זו רשימה נפתחת רגילה (יש רק כ-80 דירוגים, סבירה לגלילה); במצב "גוף" זהו <strong>תיבת חיפוש</strong> (הקלידו חלק משם הגוף לסינון) כי יש מאות גופים ורשימה נפתחת רגילה לא הייתה שימושית. גם רשימת ה-"השוואות מהירות" (Presets) מתחלפת אוטומטית לפי המצב הנבחר — סט presets לדירוגים וסט נפרד לגופים (למשל השוואת עיריות גדולות, אוניברסיטאות, או בנק ישראל מול מפעל הפיס) — כי דוגמאות משמעותיות לדירוג (כמו "מהנדסים") לא רלוונטיות לגופים ולהפך.</p>
+        <p>שני המקורות משתפים בדיוק את אותם שמות עמודות לרבדי שכר/עלות/משרות (ולכן אותה מתודולוגיית חישוב), רק ברמת פירוט שונה של השכר עצמו. הקבצים נטענים בנפרד ומעודכנים כל אחד בהרצה חוזרת של הסקריפט המתאים אם המקור שלו מתעדכן.</p>
+        <p><strong>שני מדדי שכר ממוצע שונים - אל תבלבלו ביניהם:</strong> כרטיסי ה-KPI מציגים <strong>שני</strong> מספרי "שכר ממוצע" לכל סדרה, ממקורות שונים: "שכר ממוצע משוקלל" מוערך מתוך <em>מרכזי הבינים</em> של ההיסטוגרמה (קירוב, כי כל בין מייצג טווח שכר ולא נקודה מדויקת) — הוא זה שמניע את העקומה בגרף. "שכר ממוצע מדויק (רבדים)" מחושב <code class="bg-slate-100 px-1 rounded">sumGross / posMonths</code> (סך ברוטו שוטף והפרשים חלקי חודשי-משרה, בדיוק אותה נוסחה כמו טאב "שכר דיגיטלי") — זהו המספר המדויק והמומלץ להשוואות שכר עצמן. שני המספרים בדרך כלל קרובים אך לא זהים.</p>
+        <p><strong>השוואה בין שנים:</strong> לכל סדרה (בפאנל "סדרות להשוואה") יש בורר שנה עצמאי משלה — ניתן להציב, למשל, "אחים ואחיות - נשים (2018)" מול "אחים ואחיות - נשים (2024)" באותו גרף. בורר השנה שליד הכותרת הראשית קובע רק את שנת ברירת המחדל לסדרה חדשה שתיווסף (או ללחיצה על preset) — הוא <strong>אינו</strong> משנה את השנה של סדרות קיימות, בדיוק כדי לא לשבור השוואה בין-שנתית שכבר הגדרתם. רשימות הדירוג-או-גוף והקבוצה הזמינות בכל כרטיס סדרה תלויות בשנה שנבחרה באותו כרטיס ובסוג הישות הגלובלי (דירוג/גוף), כי לא כל דירוג/גוף/קבוצה דווחו בכל שנה.</p>
+        <p><strong>פרטיות:</strong> שורות עם 5 עובדים או פחות (<code class="bg-slate-100 px-1 rounded">COUNT_OVEDIM ≤ 5</code>) מוסרות באופן גורף על ידי סקריפט הבנייה, כמו בכל שאר הדשבורד — בקובץ הזה (בשונה מקובץ המקור הקודם) הסינון הזה הכרחי, כי חלק מהשורות המקוריות מדווחות ברמת 1-4 עובדים. <strong>שימו לב:</strong> מדרגות שכר "חסרות" בגרף (למשל דילוג בין 8,500₪ ל-10,500₪) נובעות לרוב מכך שהתא המקורי הוסתר לפרטיות — לא בהכרח שהיו שם אפס עובדים בפועל.</p>
+        <p class="text-amber-700"><strong>זהירות בהשוואה בין שנים מוקדמות למאוחרות:</strong> מספר הדירוגים והרשומות המדווחים קופץ משמעותית בין 2019 (כ-2,400 רשומות, 60 דירוגים) ל-2020 (כ-5,100 רשומות, 73 דירוגים) — קפיצה כזו נובעת ככל הנראה משיפור כיסוי הדיווח ולא מגידול אמיתי בכוח האדם, כפי שנצפה גם בקובץ "שכר דיגיטלי". כמו כן 2025 חלקית (פחות רשומות מ-2024) כי לא כל החודשים דווחו עדיין. יש להתייחס בזהירות להשוואת מגמה בין 2018-2019 לשנים המאוחרות יותר.</p>
+        <p><strong>שכר ממוצע/חציוני/שכיח משוקלל (כרטיסי KPI):</strong> מחושבים מהבינים הגולמיים בזמן אמת — ממוצע משוקלל לפי כמות עובדים בכל בין, חציון = הבין הראשון שבו הצטברות העובדים חוצה 50%, שכיחות = הבין עם הכי הרבה עובדים.</p>
+        <p><strong>אלגוריתמי החלקה (בורר בפאנל השמאלי):</strong></p>
+        <ul class="list-disc pr-5 space-y-1">
+          <li><strong>ספליין:</strong> הנתונים הגולמיים ללא כל שינוי מספרי — ה"החלקה" היא ויזואלית בלבד, קימור עקומה סטנדרטי של ECharts דרך הנקודות המקוריות (העוצמה בסליידר קובעת את מתיחות העקומה).</li>
+          <li><strong>ממוצע נע משוקלל:</strong> ממוצע נע בעל משקל גאוסי סביב כל מדרגת שכר, לפי <em>מספר מדרגות</em> בסליידר — לא לפי מרחק ₪ קבוע. מכיוון שרוחב המדרגות בקובץ אינו אחיד, אותו "רוחב חלון" עשוי לכסות טווח ₪ שונה באזורים צפופים/דלילים בגרף.</li>
+          <li><strong>KDE (צפיפות גאוסית):</strong> אמידת צפיפות קרנל גאוסי אמיתית עם רוחב פס (bandwidth) ב-₪ הנקבע בסליידר. <strong>שימו לב:</strong> ערכי ה-Y מנורמלים בקבוע קבוע (×1,000) כדי להיראות בסקאלה דומה לכמות עובדים גולמית — זהו קירוב חזותי בלבד, לא שימור מדויק של סך העובדים (השטח מתחת לעקומה אינו שווה בהכרח לסך העובדים בפועל).</li>
+          <li><strong>נתונים גולמיים (Bins):</strong> ההיסטוגרמה המקורית ללא שום עיבוד.</li>
+        </ul>
+        <p><strong>רבדי שכר לפי סדרה (הגרף התחתון):</strong> אותה מתודולוגיה בדיוק כמו טאב "שכר דיגיטלי" — "יסוד ותוספות" = <code class="bg-slate-100 px-1 rounded">total_sachar_mshulav + total_salary_additions</code>; "עבודה נוספת" = <code class="bg-slate-100 px-1 rounded">total_additional_work</code>; "החזר הוצאות" = <code class="bg-slate-100 px-1 rounded">total_expense_refund</code>; "תשלומים והפרשים" = <code class="bg-slate-100 px-1 rounded">total_other_payments</code>. כל רובד הוא אחוז מתוך סכום ארבעת הרבדים יחד (מסתכמים תמיד ל-100%) — לא אחוז מהברוטו הכולל, ולכן לא ניתן להשוות ישירות בין "שכר ממוצע מדויק" ל"רבדי שכר" ביחידות ₪. ההבדל בין הטאב הזה לטאב "שכר דיגיטלי": שם הרבדים מחושבים פעם אחת ברמת דירוג מצרפית; כאן הם מחושבים בזמן אמת לכל סדרה מותאמת-אישית (כל שילוב רמה/קבוצה/מגדר/שנה) על ידי סכימה על פני הבינים הרלוונטיים.</p>
+        <p class="text-amber-700"><strong>מעמד הכלי:</strong> זהו דף עצמאי לניתוח וחקירה, שאינו מקושר עדיין מהדשבורד הראשי (<code class="bg-slate-100 px-1 rounded">index.html</code>) ואינו חלק מהניווט הרגיל — נמצא כרגע בפיתוח נפרד.</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      
+      <!-- Left Column: Controls & Series Builder (xl:col-span-4) -->
+      <div class="xl:col-span-4 space-y-5">
+        
+        <!-- Comparison Series Box -->
+        <div class="glass-panel rounded-2xl p-4 shadow-sm">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                <i data-lucide="layers" class="w-4 h-4"></i>
+              </div>
+              <h2 class="text-sm font-bold text-slate-800">סדרות להשוואה</h2>
+              <span id="seriesCountBadge" class="text-xs px-2 py-0.5 rounded-full bg-slate-100 font-semibold text-slate-600">2 / 6</span>
+            </div>
+            <button id="btnAddSeries" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              הוסף סדרה
+            </button>
+          </div>
+
+          <!-- Global entity-type toggle: applies to ALL series at once - ranks (continuous
+               histogram) and bodies (11 discrete bands) can't be mixed in one chart, so
+               switching this resets every series to the wildcard for the new type. -->
+          <div class="grid grid-cols-2 gap-1.5 mb-3 bg-slate-100 p-1 rounded-xl text-xs">
+            <button id="btnEntityTypeRank" class="entity-type-global-btn py-1.5 px-2 rounded-lg font-bold text-center transition" data-type="rank">דירוג (עקומה רציפה)</button>
+            <button id="btnEntityTypeBody" class="entity-type-global-btn py-1.5 px-2 rounded-lg font-bold text-center transition" data-type="body">גוף (11 רצועות בדידות)</button>
+          </div>
+
+          <!-- Series List Container -->
+          <div id="seriesList" class="space-y-3 max-h-[460px] overflow-y-auto pr-1">
+            <!-- Rendered dynamically by JS -->
+          </div>
+        </div>
+
+        <!-- Smoothing & Curve Controls -->
+        <div class="glass-panel rounded-2xl p-4 shadow-sm">
+          <div class="flex items-center gap-2 pb-3 mb-3 border-b border-slate-100">
+            <div class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+              <i data-lucide="sliders" class="w-4 h-4"></i>
+            </div>
+            <h2 class="text-sm font-bold text-slate-800">הגדרות החלקה וצירים</h2>
+          </div>
+
+          <div class="space-y-4 text-xs">
+            
+            <!-- Metric Y Axis Toggle -->
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1.5">ציר Y (מדד כמות):</label>
+              <div class="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
+                <button class="metric-btn active py-1.5 px-2 rounded-lg font-bold text-center transition bg-white text-blue-700 shadow-sm" data-metric="COUNT_OVEDIM">
+                  כמות עובדים
+                </button>
+                <button class="metric-btn py-1.5 px-2 rounded-lg font-medium text-center text-slate-600 hover:text-slate-900 transition" data-metric="PCT_OVEDIM">
+                  אחוז עובדים (%)
+                </button>
+                <button class="metric-btn py-1.5 px-2 rounded-lg font-medium text-center text-slate-600 hover:text-slate-900 transition" data-metric="TOTAL_MISROT">
+                  היקף משרות
+                </button>
+              </div>
+            </div>
+
+            <!-- Smoothing Algorithm (rank mode only - bodies only have 11 discrete bands,
+                 so there's nothing to smooth; the chart renders as discrete bars instead) -->
+            <p id="smoothNotAvailableNote" class="hidden text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+              לא זמין במצב "גוף" — יש רק 11 רצועות שכר בדידות, ללא רצף להחליק. הגרף מוצג כעמודות בדידות לפי רצועה.
+            </p>
+            <div id="smoothAlgorithmSection">
+              <label class="block font-semibold text-slate-700 mb-1.5">אלגוריתם החלקה:</label>
+              <div class="grid grid-cols-2 gap-1.5">
+                <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer">
+                  <input type="radio" name="smoothType" value="spline" checked class="text-blue-600 focus:ring-blue-500">
+                  <span class="font-medium text-slate-800">ספליין (Spline)</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer">
+                  <input type="radio" name="smoothType" value="kde" class="text-blue-600 focus:ring-blue-500">
+                  <span class="font-medium text-slate-800">KDE (צפיפות גאוסית)</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer">
+                  <input type="radio" name="smoothType" value="ma" class="text-blue-600 focus:ring-blue-500">
+                  <span class="font-medium text-slate-800">ממוצע נע משוקלל</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer">
+                  <input type="radio" name="smoothType" value="raw" class="text-blue-600 focus:ring-blue-500">
+                  <span class="font-medium text-slate-800">נתונים גולמיים (Bins)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Smooth Intensity Slider -->
+            <div id="smoothSliderContainer">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-semibold text-slate-700">עוצמת החלקה / רוחב חלון:</span>
+                <span id="smoothParamVal" class="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">0.45</span>
+              </div>
+              <input type="range" id="smoothIntensitySlider" min="0.1" max="0.9" step="0.05" value="0.45" class="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                <span>חד ומפורט</span>
+                <span>מאוזן</span>
+                <span>חלק ועגול</span>
+              </div>
+            </div>
+
+            <!-- Visual Styling Options -->
+            <div class="pt-2 border-t border-slate-100 grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-medium text-slate-600">שקיפות מילוי:</span>
+                  <span id="opacityVal" class="font-bold text-slate-700">25%</span>
+                </div>
+                <input type="range" id="areaOpacitySlider" min="0" max="70" step="5" value="25" class="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-medium text-slate-600">עובי קו:</span>
+                  <span id="lineWidthVal" class="font-bold text-slate-700">3px</span>
+                </div>
+                <input type="range" id="lineWidthSlider" min="1" max="6" step="1" value="3" class="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+              </div>
+            </div>
+
+            <!-- Reference Lines & Toggles -->
+            <div class="pt-2 border-t border-slate-100 space-y-2">
+              <label class="flex items-center justify-between cursor-pointer">
+                <span class="text-slate-700 font-medium">הצג קווי ממוצע וחציון על הגרף</span>
+                <input type="checkbox" id="chkShowStatsLines" checked class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4">
+              </label>
+              <label class="flex items-center justify-between cursor-pointer">
+                <span class="text-slate-700 font-medium">הצג נקודות שיא שכיחות (Mode Peaks)</span>
+                <input type="checkbox" id="chkShowPeaks" checked class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4">
+              </label>
+              <label class="flex items-center justify-between cursor-pointer">
+                <span class="text-slate-700 font-medium">הצג נקודות דגימה מקוריות (Scatter Bins)</span>
+                <input type="checkbox" id="chkShowRawPoints" class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4">
+              </label>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Chart & Analytics (xl:col-span-8) -->
+      <div class="xl:col-span-8 space-y-5">
+        
+        <!-- KPI Metric Cards Grid -->
+        <div id="kpiCardsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Dynamic KPI Cards will be populated here -->
+        </div>
+
+        <!-- Main Chart Card -->
+        <div class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm">
+          
+          <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-2 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                <i data-lucide="line-chart" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-slate-800">התפלגות שכר רציפה</h3>
+                <p class="text-xs text-slate-500">ציר אופקי (X): מדרגות שכר ברוטו (₪) | ציר אנכי (Y): <span id="yAxisLabelTxt">כמות עובדים</span></p>
+              </div>
+            </div>
+
+            <!-- Zoom & Range Helpers -->
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-400 font-medium">טווח שכר מהיר:</span>
+              <button class="range-preset-btn px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700" data-range="0,40000">עד 40k ₪</button>
+              <button class="range-preset-btn px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700" data-range="0,70000">עד 70k ₪</button>
+              <button class="range-preset-btn px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold" data-range="all">הכל (130k ₪)</button>
+              <button id="btnResetZoom" class="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="איפוס זום">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- EChart Container -->
+          <div class="relative w-full h-[520px]">
+            <div id="mainChart" class="w-full h-full"></div>
+            
+            <!-- Empty state overlay -->
+            <div id="chartEmptyOverlay" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6">
+              <i data-lucide="info" class="w-10 h-10 text-slate-300 mb-2"></i>
+              <p class="text-sm font-semibold text-slate-700">לא נבחרו סדרות פעילות או שאין נתונים לצירוף הנבחר</p>
+              <p class="text-xs text-slate-500 mt-1">אנא הוסף סדרה או בחר תרחיש השוואה מהיר למעלה</p>
+            </div>
+          </div>
+
+          <!-- Bottom Chart Info Bar -->
+          <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-3">
+            <div class="flex items-center gap-4">
+              <span class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span>גרור את סרגל הזום התחתון להתמקדות במקטעי שכר ספציפיים</span>
+              </span>
+              <span class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                <span>רחף מעל העקומה לצפייה בפרטי השכר והפער המדויק</span>
+              </span>
+            </div>
+            <div id="chartStatsSummary" class="font-medium text-slate-700">
+              <!-- Summary populated by JS -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Salary Layers Composition -->
+        <div class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm">
+          <div class="flex items-center gap-2 pb-3 mb-2 border-b border-slate-100">
+            <div class="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center font-bold">
+              <i data-lucide="layers-3" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-800">רבדי שכר לפי סדרה</h3>
+              <p class="text-xs text-slate-500">התפלגות ברוטו ל-4 רכיבים, לכל סדרה פעילה - אותה מתודולוגיה כמו טאב "שכר דיגיטלי"</p>
+            </div>
+          </div>
+          <div class="relative w-full h-[260px]">
+            <div id="chartLayers" class="w-full h-full"></div>
+            <div id="chartLayersEmptyOverlay" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6">
+              <p class="text-xs text-slate-500">אין נתוני רבדי שכר לסדרות הפעילות</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comparative Data Table (Collapsible) -->
+        <div class="glass-panel rounded-2xl p-4 shadow-sm">
+          <button id="btnToggleTable" class="w-full flex items-center justify-between text-right">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                <i data-lucide="table" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-800">טבלת השוואת נתונים מפורטת</h3>
+                <p class="text-xs text-slate-500">פירוט עובדים, אחוזים ושכר לפי מדרגות</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs font-semibold text-slate-600">
+              <span id="tableRowsCount">0 שורות</span>
+              <i data-lucide="chevron-down" id="tableChevron" class="w-4 h-4 transition-transform duration-200"></i>
+            </div>
+          </button>
+
+          <div id="tableContainer" class="hidden mt-4 pt-3 border-t border-slate-100 overflow-x-auto max-h-96">
+            <table class="w-full text-right text-xs text-slate-600">
+              <thead class="bg-slate-100/90 text-slate-800 font-bold sticky top-0">
+                <tr id="tableHeaderRow">
+                  <th class="py-2 px-3 rounded-r-lg">מדרגת שכר (₪)</th>
+                  <!-- Series dynamic headers -->
+                </tr>
+              </thead>
+              <tbody id="tableBody" class="divide-y divide-slate-100 font-mono text-[11px]">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+      <!-- Multi-year comparison studio -->
+      <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+        <div>
+          <h3 class="text-base font-bold text-slate-900">סטודיו השוואה רב-שנתית (2018–2025)</h3>
+          <p class="text-xs text-slate-500 mt-1">
+            השוואה זו עצמאית מבורר השנה שלמעלה — בחר טווח שנים, הוסף עד 6 דירוגים/גופים ובחר מדד, לצפייה במגמה לאורך זמן.
+            <strong class="text-amber-700">שימו לב:</strong> חלק מהדירוגים (וכ-5% מהגופים) עברו קפיצות סיווג חדות בין שנים מסוימות (בעיקר סביב 2024) שאינן צמיחה אמיתית —
+            ישויות כאלה מסומנות בקו מקווקו ובאזהרה. עדיף להעדיף גופים על פני דירוגים להשוואה רב-שנתית אמינה.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div class="md:col-span-6 space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 block">הוסף דירוגים/גופים להשוואה:</label>
+            <div class="relative">
+              <input type="text" id="inputDsTrendSearch" placeholder="🔍 הקלד לחיפוש דירוג או גוף..."
+                     class="w-full h-9 px-3 text-xs bg-white border border-slate-200 rounded-lg shadow-xs focus:outline-none focus:border-brand-500">
+              <div id="dropdownDsTrendResults" class="hidden absolute top-full right-0 left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto divide-y divide-slate-100"></div>
+            </div>
+          </div>
+
+          <div class="md:col-span-4 space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 block">טווח שנים:</label>
+            <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1 flex-1">
+                <span class="text-xs text-slate-500">מ-</span>
+                <select id="selectDsTrendFromYear" class="w-full h-9 px-2 text-xs font-bold bg-white border border-slate-200 rounded-lg shadow-xs focus:outline-none"></select>
+              </div>
+              <div class="flex items-center gap-1 flex-1">
+                <span class="text-xs text-slate-500">עד</span>
+                <select id="selectDsTrendToYear" class="w-full h-9 px-2 text-xs font-bold bg-white border border-slate-200 rounded-lg shadow-xs focus:outline-none"></select>
+              </div>
+            </div>
+          </div>
+
+          <div class="md:col-span-2 space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 block">&nbsp;</label>
+            <button id="btnDsTrendClear" class="w-full h-9 text-xs font-semibold text-rose-600 bg-white border border-slate-200 rounded-lg shadow-xs hover:bg-rose-50 transition-colors">נקה הכל</button>
+          </div>
+
+          <div class="md:col-span-12 flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-200">
+            <span class="text-xs font-bold text-slate-700 ml-2">שכר ותעסוקה:</span>
+            <button data-metric="avgWage" class="btnDsTrendMetric px-3 py-1.5 text-xs font-bold rounded-lg transition-colors bg-brand-600 text-white shadow-xs">💰 שכר ממוצע כללי</button>
+            <button data-metric="menWage" class="btnDsTrendMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">👨 שכר גברים</button>
+            <button data-metric="womenWage" class="btnDsTrendMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">👩 שכר נשים</button>
+            <button data-metric="gap" class="btnDsTrendMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">⚖️ פער מגדרי %</button>
+            <button data-metric="headcount" class="btnDsTrendMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">🔢 מספר משרות</button>
+          </div>
+
+          <div class="md:col-span-12 flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-200">
+            <span class="text-xs font-bold text-slate-700 ml-2">רבדי שכר (% מהברוטו):</span>
+            <button data-metric="layerBase" class="btnDsTrendMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">יסוד ותוספות</button>
+            <button data-metric="layerExtra" class="btnDsTrendMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">עבודה נוספת</button>
+            <button data-metric="layerExpense" class="btnDsTrendMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">החזר הוצאות</button>
+            <button data-metric="layerOther" class="btnDsTrendMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">תשלומים והפרשים</button>
+            <span class="text-xs font-bold text-slate-700 ml-3">טווחי שכר:</span>
+            <button data-metric="bandLow" class="btnDsTrendMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">% בשכר נמוך (עד 12,000)</button>
+            <button data-metric="bandHigh" class="btnDsTrendMetric px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">% בשכר גבוה (מעל 28,000)</button>
+          </div>
+        </div>
+
+        <div id="containerDsTrendTags" class="flex flex-wrap gap-2 min-h-[36px] p-2 bg-slate-50/70 border border-slate-200 rounded-lg"></div>
+
+        <div id="chartDsTrend" style="height: 440px; width: 100%;"></div>
+
+        <div class="overflow-x-auto rounded-lg border border-slate-200">
+          <table id="tableDsTrendDelta" class="w-full text-xs text-right">
+            <thead class="bg-slate-50 text-slate-600 uppercase border-b border-slate-200">
+              <tr>
+                <th class="px-4 py-2.5 font-bold">שם</th>
+                <th id="thDsTrendStart" class="px-4 py-2.5 font-bold text-center">ערך התחלתי</th>
+                <th id="thDsTrendEnd" class="px-4 py-2.5 font-bold text-center">ערך סופי</th>
+                <th class="px-4 py-2.5 font-bold text-center">שינוי</th>
+                <th class="px-4 py-2.5 font-bold text-center">שינוי %</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyDsTrendDelta" class="divide-y divide-slate-100 bg-white"></tbody>
+          </table>
+        </div>
+      </section>
+
     </div>
 
   </main>
@@ -568,17 +1253,21 @@
   </div>
 
   <script src="scripts/data_bundle.js?v=27"></script>
-  <script src="scripts/tableau_benchmarks.js?v=31"></script>
   <script src="scripts/parser.js?v=31"></script>
   <script src="scripts/validator.js?v=31"></script>
   <script src="scripts/insights.js?v=31"></script>
-  
+  <script src="scripts/salary_ranges_bundle.js?v=1"></script>
+  <script src="scripts/smoothing_data.js?v=1"></script>
+  <script src="scripts/smoothing_body_data.js?v=1"></script>
+
   <script src="scripts/tabs/overview.js?v=31"></script>
   <script src="scripts/tabs/ranks.js?v=31"></script>
   <script src="scripts/tabs/quality.js?v=31"></script>
   <script src="scripts/tabs/trends.js?v=31"></script>
   <script src="scripts/tabs/directory.js?v=31"></script>
-  
+  <script src="scripts/tabs/digitalsalary_studio.js?v=1"></script>
+  <script src="scripts/tabs/digitalsalary.js?v=1"></script>
+
   <script src="scripts/app.js?v=31"></script>
 </body>
 </html>

@@ -34,7 +34,7 @@ window.TabTrends = (function () {
     },
     finance: {
       type: 'bodyName',
-      entities: ['בנק ישראל', 'הבורסה לניירות ערך בתל-אביב בע"מ', 'רשות ניירות ערך', 'ענבל חברה לביטוח בע"מ']
+      entities: ['בנק ישראל', 'רשות ניירות ערך', 'המוסד לביטוח לאומי', 'ענבל חברה לבטוח בע"מ']
     },
     ranks: {
       type: 'rank',
@@ -63,49 +63,24 @@ window.TabTrends = (function () {
     const appState = (window.App && window.App.state) || null;
     const overview = (appState && appState.data && appState.data.overview) || [];
     const partTime = (appState && appState.data && appState.data.partTime) || [];
-    const benchmarks = window.__TABLEAU_BODY_BENCHMARKS__ || {};
 
     if (entityType === 'bodyName') {
-      const key = `${entityName}_${year}`;
-      const bm = benchmarks[key];
-      if (bm) {
-        return {
-          avgMenWage: bm.avgMenWage,
-          menWage: bm.avgMenWage,
-          avgWomenWage: bm.avgWomenWage,
-          womenWage: bm.avgWomenWage,
-          overallWage: bm.overallWage,
-          totalWage: bm.overallWage,
-          gap: bm.genderPayGapPercent,
-          totalEmployees: bm.totalEmployees,
-          womenPercent: bm.totalEmployees > 0 ? Math.round((bm.womenCount / bm.totalEmployees) * 1000) / 10 : null,
-          menCount: bm.menCount,
-          womenCount: bm.womenCount
-        };
-      }
-      // Fallback: calculate from overview & partTime
-      const ptRow = partTime.find(r => r.bodyName === entityName && r.year === year);
+      // Wage/gap from partTime.csv's full-time columns — verified against
+      // the official public dashboard within ~0.2% (overview.csv's plain
+      // wage columns exclude retroactive/differential payments and run
+      // 1-8% low). Headcount from overview.csv (all employees, not just FT).
+      const ptRows = partTime.filter(r => r.bodyName === entityName && r.year === year);
       const ovRows = overview.filter(r => r.bodyName === entityName && r.year === year);
-      
-      const totM = ptRow ? (ptRow.ftMenCount || 0) + (ptRow.ptMenCount || 0) : ovRows.reduce((s, r) => s + (r.menCount || 0), 0);
-      const totW = ptRow ? (ptRow.ftWomenCount || 0) + (ptRow.ptWomenCount || 0) : ovRows.reduce((s, r) => s + (r.womenCount || 0), 0);
+
+      const totM = ovRows.reduce((s, r) => s + (r.menCount || 0), 0);
+      const totW = ovRows.reduce((s, r) => s + (r.womenCount || 0), 0);
       const totHC = totM + totW;
 
-      let mw = null, ww = null, tw = null;
-      if (ptRow && ptRow.ftMenWage && ptRow.ftMenCount > 0) {
-        const rate = ptRow.ptMenWage || ptRow.ftTotalWage || ptRow.ftMenWage;
-        mw = ((ptRow.ftMenWage * ptRow.ftMenCount) + (rate * (ptRow.ptMenCount || 0))) / (totM || 1);
-      }
-      if (ptRow && ptRow.ftWomenWage && ptRow.ftWomenCount > 0) {
-        const rate = ptRow.ptWomenWage || ptRow.ftTotalWage || ptRow.ftWomenWage;
-        ww = ((ptRow.ftWomenWage * ptRow.ftWomenCount) + (rate * (ptRow.ptWomenCount || 0))) / (totW || 1);
-      }
-      if (ptRow && ptRow.ftTotalWage && ptRow.ftTotalCount > 0) {
-        const rate = ptRow.ptTotalWage || ptRow.ftTotalWage;
-        tw = ((ptRow.ftTotalWage * ptRow.ftTotalCount) + (rate * (ptRow.ptTotalCount || 0))) / (totHC || 1);
-      }
+      const mw = ptRows.length ? DataValidator.calculateFTWeightedMenWage(ptRows) : null;
+      const ww = ptRows.length ? DataValidator.calculateFTWeightedWomenWage(ptRows) : null;
+      const tw = ptRows.length ? DataValidator.calculateFTWeightedOverallWage(ptRows) : null;
+      const g = ptRows.length ? DataValidator.calculateFTAggregateGap(ptRows) : null;
 
-      const g = (mw && ww && mw > 0) ? ((mw - ww) / mw) * 100 : null;
       return {
         avgMenWage: mw ? Math.round(mw) : null,
         menWage: mw ? Math.round(mw) : null,
@@ -122,21 +97,19 @@ window.TabTrends = (function () {
     }
 
     if (entityType === 'rank') {
+      // Rank detail only exists in overview.csv — no partTime equivalent.
       const rows = overview.filter(r => r.rank === entityName && r.year === year);
       if (rows.length === 0) return null;
 
-      let sumMS = 0, sumMC = 0, sumWS = 0, sumWC = 0, sumTS = 0, sumTC = 0;
-      rows.forEach(r => {
-        if (r.avgMenWage && r.menCount > 0) { sumMS += r.avgMenWage * r.menCount; sumMC += r.menCount; }
-        if (r.avgWomenWage && r.womenCount > 0) { sumWS += r.avgWomenWage * r.womenCount; sumWC += r.womenCount; }
-        if (r.avgGrossRegular && r.monthlyEmployeeCount > 0) { sumTS += r.avgGrossRegular * r.monthlyEmployeeCount; sumTC += r.monthlyEmployeeCount; }
-      });
-
-      const mw = sumMC > 0 ? (sumMS / sumMC) : null;
-      const ww = sumWC > 0 ? (sumWS / sumWC) : null;
-      const tw = sumTC > 0 ? (sumTS / sumTC) : null;
-      const totHC = sumMC + sumWC;
-      const g = (mw && ww && mw > 0) ? ((mw - ww) / mw) * 100 : null;
+      const totM = rows.reduce((s, r) => s + (r.menCount || 0), 0);
+      const totW = rows.reduce((s, r) => s + (r.womenCount || 0), 0);
+      const bothPresent = rows.filter(r => r.avgMenWage !== null && r.avgWomenWage !== null);
+      const basis = bothPresent.length ? bothPresent : rows;
+      const mw = DataValidator.calculateWeightedAverageMenWage(basis);
+      const ww = DataValidator.calculateWeightedAverageWomenWage(basis);
+      const tw = DataValidator.calculateOverallAverageWage(rows);
+      const g = DataValidator.calculateGenderPayGap(mw, ww);
+      const totHC = totM + totW;
 
       return {
         avgMenWage: mw ? Math.round(mw) : null,
@@ -147,36 +120,27 @@ window.TabTrends = (function () {
         totalWage: tw ? Math.round(tw) : null,
         gap: g !== null ? Math.round(g * 10) / 10 : null,
         totalEmployees: Math.round(totHC),
-        womenPercent: totHC > 0 ? Math.round((sumWC / totHC) * 1000) / 10 : null,
-        menCount: Math.round(sumMC),
-        womenCount: Math.round(sumWC)
+        womenPercent: totHC > 0 ? Math.round((totW / totHC) * 1000) / 10 : null,
+        menCount: Math.round(totM),
+        womenCount: Math.round(totW)
       };
     }
 
     if (entityType === 'system') {
-      const rows = partTime.length > 0 ? partTime.filter(r => r.system === entityName && r.year === year) : overview.filter(r => r.system === entityName && r.year === year);
-      if (rows.length === 0) return null;
+      // Wage/gap from partTime.csv full-time columns (see bodyName above);
+      // headcount from overview.csv (all employees, not just full-time).
+      const ovRows = overview.filter(r => r.system === entityName && r.year === year);
+      const ptRows = partTime.filter(r => r.system === entityName && r.year === year);
+      if (ovRows.length === 0 && ptRows.length === 0) return null;
 
-      let sumMS = 0, sumMC = 0, sumWS = 0, sumWC = 0, sumTS = 0, sumTC = 0;
-      if (partTime.length > 0) {
-        rows.forEach(r => {
-          if (r.ftMenWage && r.ftMenCount > 0) { sumMS += r.ftMenWage * r.ftMenCount; sumMC += r.ftMenCount; }
-          if (r.ftWomenWage && r.ftWomenCount > 0) { sumWS += r.ftWomenWage * r.ftWomenCount; sumWC += r.ftWomenCount; }
-          if (r.ftTotalWage && r.ftTotalCount > 0) { sumTS += r.ftTotalWage * r.ftTotalCount; sumTC += r.ftTotalCount; }
-        });
-      } else {
-        rows.forEach(r => {
-          if (r.avgMenWage && r.menCount > 0) { sumMS += r.avgMenWage * r.menCount; sumMC += r.menCount; }
-          if (r.avgWomenWage && r.womenCount > 0) { sumWS += r.avgWomenWage * r.womenCount; sumWC += r.womenCount; }
-          if (r.avgGrossRegular && r.monthlyEmployeeCount > 0) { sumTS += r.avgGrossRegular * r.monthlyEmployeeCount; sumTC += r.monthlyEmployeeCount; }
-        });
-      }
+      const totM = ovRows.reduce((s, r) => s + (r.menCount || 0), 0);
+      const totW = ovRows.reduce((s, r) => s + (r.womenCount || 0), 0);
+      const totHC = totM + totW;
 
-      const mw = sumMC > 0 ? (sumMS / sumMC) : null;
-      const ww = sumWC > 0 ? (sumWS / sumWC) : null;
-      const tw = sumTC > 0 ? (sumTS / sumTC) : null;
-      const totHC = sumMC + sumWC;
-      const g = (mw && ww && mw > 0) ? ((mw - ww) / mw) * 100 : null;
+      const mw = ptRows.length ? DataValidator.calculateFTWeightedMenWage(ptRows) : null;
+      const ww = ptRows.length ? DataValidator.calculateFTWeightedWomenWage(ptRows) : null;
+      const tw = ptRows.length ? DataValidator.calculateFTWeightedOverallWage(ptRows) : null;
+      const g = ptRows.length ? DataValidator.calculateFTAggregateGap(ptRows) : null;
 
       return {
         avgMenWage: mw ? Math.round(mw) : null,
@@ -187,9 +151,9 @@ window.TabTrends = (function () {
         totalWage: tw ? Math.round(tw) : null,
         gap: g !== null ? Math.round(g * 10) / 10 : null,
         totalEmployees: Math.round(totHC),
-        womenPercent: totHC > 0 ? Math.round((sumWC / totHC) * 1000) / 10 : null,
-        menCount: Math.round(sumMC),
-        womenCount: Math.round(sumWC)
+        womenPercent: totHC > 0 ? Math.round((totW / totHC) * 1000) / 10 : null,
+        menCount: Math.round(totM),
+        womenCount: Math.round(totW)
       };
     }
 
@@ -754,12 +718,15 @@ window.TabTrends = (function () {
       };
     });
 
-    // National average line from benchmarks
+    // National average line — computed live from partTime.csv's full-time
+    // columns across all bodies for that year (same method as everywhere
+    // else; see getEntityMetric).
+    const appState = (window.App && window.App.state) || null;
+    const allPartTime = (appState && appState.data && appState.data.partTime) || [];
     const nationalData = years.map(yr => {
-      if (window.DataValidator && window.DataValidator.TABLEAU_BENCHMARKS && window.DataValidator.TABLEAU_BENCHMARKS[yr]) {
-        return window.DataValidator.TABLEAU_BENCHMARKS[yr].genderPayGapPercent;
-      }
-      return null;
+      const ptYear = allPartTime.filter(r => r.year === yr);
+      if (ptYear.length === 0) return null;
+      return DataValidator.calculateFTAggregateGap(ptYear);
     });
 
     if (nationalData.some(v => v !== null)) {

@@ -15,7 +15,6 @@ window.App = (function() {
       minWage: []
     },
     activeTab: 'overview', // 'overview' | 'ranks' | 'quality' | 'trends' | 'directory'
-    workforceScope: 'fullTime', // 'fullTime' | 'allEmployees'
     filters: {
       year: 2024,         // Default to latest year (strictly single-select)
       system: [],
@@ -93,7 +92,7 @@ window.App = (function() {
 
   function handleRouteChange() {
     let hash = window.location.hash.replace('#', '') || 'overview';
-    const validTabs = ['overview', 'ranks', 'quality', 'trends', 'directory'];
+    const validTabs = ['overview', 'ranks', 'quality', 'trends', 'directory', 'digitalsalary'];
     
     if (!validTabs.includes(hash)) {
       hash = 'overview';
@@ -144,6 +143,13 @@ window.App = (function() {
       yearEl.disabled = true;
       yearEl.classList.add('opacity-50', 'cursor-not-allowed');
       yearLabel.classList.remove('hidden');
+      if (subSysEl) { subSysEl.disabled = true; subSysEl.classList.add('opacity-50'); }
+      bodyEl.disabled = true; bodyEl.classList.add('opacity-50');
+      rankEl.disabled = true; rankEl.classList.add('opacity-50');
+    } else if (tabId === 'digitalsalary') {
+      // Independent dataset ("שכר דיגיטלי מגויר" + DOCH1_DENSITY_FINAL) — global filter bar does not apply
+      yearEl.disabled = true; yearEl.classList.add('opacity-50', 'cursor-not-allowed');
+      sysEl.disabled = true; sysEl.classList.add('opacity-50');
       if (subSysEl) { subSysEl.disabled = true; subSysEl.classList.add('opacity-50'); }
       bodyEl.disabled = true; bodyEl.classList.add('opacity-50');
       rankEl.disabled = true; rankEl.classList.add('opacity-50');
@@ -390,9 +396,11 @@ window.App = (function() {
     
     // Delegate to active tab controller
     switch (state.activeTab) {
-      case 'overview':
-        if (window.TabOverview) TabOverview.update(fOverview, state.filters.year);
+      case 'overview': {
+        const fPartTimeOv = applyFiltersTo(state.data.partTime);
+        if (window.TabOverview) TabOverview.update(fOverview, fPartTimeOv, state.filters.year);
         break;
+      }
       
       case 'ranks': {
         const isFiltered = (state.filters.rank && state.filters.rank.length > 0) || 
@@ -422,12 +430,24 @@ window.App = (function() {
       case 'directory':
         if (window.TabDirectory) TabDirectory.update(fOverview);
         break;
+
+      case 'digitalsalary':
+        if (window.TabDigitalSalary) TabDigitalSalary.update();
+        break;
     }
   }
 
   // ── Event Binding ─────────────────────────────────────────────
 
   function bindEvents() {
+    // Per-tab methodology panels (ⓘ button toggles its sibling panel)
+    document.querySelectorAll('.btnMethodology').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.dataset.target);
+        if (target) target.classList.toggle('hidden');
+      });
+    });
+
     // Year Filter
     const yearEl = document.getElementById('filterYear');
     if (yearEl) {

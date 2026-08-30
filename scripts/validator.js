@@ -2,45 +2,41 @@
  * Data Validation & Aggregation Engine - Stage 1
  * Implements Headcount-Weighted Aggregation math and outputs
  * verification tables (console.table) for full dataset audit.
+ *
+ * Methodology note: every weighted average below excludes rows whose
+ * weight (employee count) is <= PRIVACY_THRESHOLD from *both* the
+ * numerator and the denominator — matching the same small-group privacy
+ * suppression the source ministry applies (verified empirically against
+ * the public "שכר שווה" Tableau dashboard on several bodies: Mifal
+ * HaPayis, Bank of Israel, Haifa municipality — all reproduced within
+ * ~0.2% using this rule together with the "משרה מלאה" wage columns).
  */
 
 window.DataValidator = (function() {
 
   const PRIVACY_THRESHOLD = 5;
 
-  const TABLEAU_BENCHMARKS = {
-    2024: { avgMenWage: 21632, avgWomenWage: 16051, overallWage: 17833, genderPayGapPercent: 25.80 },
-    2023: { avgMenWage: 20834, avgWomenWage: 15588, overallWage: 17300, genderPayGapPercent: 25.20 },
-    2022: { avgMenWage: 19513, avgWomenWage: 14336, overallWage: 16042, genderPayGapPercent: 26.50 },
-    2021: { avgMenWage: 19049, avgWomenWage: 13992, overallWage: 15565, genderPayGapPercent: 26.50 },
-    2020: { avgMenWage: 20705, avgWomenWage: 15632, overallWage: 16912, genderPayGapPercent: 24.50 }
-  };
-
-  const TABLEAU_BODY_BENCHMARKS = (typeof window !== 'undefined' && window.__TABLEAU_BODY_BENCHMARKS__) ? window.__TABLEAU_BODY_BENCHMARKS__ : {
-    'רשות שדות תעופה_2024': {
-      menCount: 3084,
-      womenCount: 1201,
-      totalEmployees: 4285,
-      avgMenWage: 29455,
-      avgWomenWage: 22936,
-      overallWage: 27744,
-      genderPayGapPercent: 22.10
-    },
-    'בנק ישראל_2024': {
-      menCount: 578,
-      womenCount: 475,
-      totalEmployees: 1053,
-      avgMenWage: 36348,
-      avgWomenWage: 32055,
-      overallWage: 34361,
-      genderPayGapPercent: 11.81
-    }
-  };
+  /**
+   * Generic headcount-weighted average: Sum(value_i * weight_i) / Sum(weight_i),
+   * over rows where both value and weight are present and weight > threshold.
+   */
+  function weightedAvg(records, valueField, weightField, threshold = PRIVACY_THRESHOLD) {
+    let sum = 0, weightSum = 0;
+    records.forEach(r => {
+      const v = r[valueField];
+      const w = r[weightField];
+      if (v !== null && v !== undefined && w !== null && w !== undefined && w > threshold) {
+        sum += v * w;
+        weightSum += w;
+      }
+    });
+    return weightSum > 0 ? (sum / weightSum) : 0;
+  }
 
   /**
    * Calculates Total Employees (Men + Women)
    * Sums exact fractional employee counts across all records, and rounds only at the final total.
-   * @param {Array<Object>} records 
+   * @param {Array<Object>} records
    * @returns {Object} { totalMen, totalWomen, totalEmployees }
    */
   function calculateTotalEmployees(records) {
@@ -77,7 +73,7 @@ window.DataValidator = (function() {
     if (total <= 0) {
       return { menPct: 0, womenPct: 0, menShare: 0, womenShare: 0 };
     }
-    
+
     if (decimals === 0) {
       const rawWomen = (w / total) * 100;
       const womenPct = Math.min(100, Math.max(0, Math.round(rawWomen)));
@@ -92,52 +88,26 @@ window.DataValidator = (function() {
     }
   }
 
-  /**
-   * Calculates Weighted Average Men's Wage
-   * Formula: Sum(AvgWage_i * Count_i) / Sum(Count_i)
-   * @param {Array<Object>} records 
-   * @returns {number}
-   */
+  // ── Rank-level (overview.csv) weighted averages ──────────────────
+  // Use these only where per-rank detail is needed — "שכר גברים/נשים
+  // ממוצע" in this file is a plainer wage concept than the FT columns
+  // below (it does not include "הפרשים" — retroactive/differential
+  // payments), so it will not reproduce the official published figures
+  // as closely. It's the only source with rank-level detail though.
+
   function calculateWeightedAverageMenWage(records) {
-    let weightedWageSum = 0;
-    let validCountSum = 0;
-
-    records.forEach(r => {
-      if (r.avgMenWage !== null && r.menCount !== null && r.menCount > 0) {
-        weightedWageSum += r.avgMenWage * r.menCount;
-        validCountSum += r.menCount;
-      }
-    });
-
-    return validCountSum > 0 ? (weightedWageSum / validCountSum) : 0;
+    return weightedAvg(records, 'avgMenWage', 'menCount');
   }
 
-  /**
-   * Calculates Weighted Average Women's Wage
-   * Formula: Sum(AvgWage_i * Count_i) / Sum(Count_i)
-   * @param {Array<Object>} records 
-   * @returns {number}
-   */
   function calculateWeightedAverageWomenWage(records) {
-    let weightedWageSum = 0;
-    let validCountSum = 0;
-
-    records.forEach(r => {
-      if (r.avgWomenWage !== null && r.womenCount !== null && r.womenCount > 0) {
-        weightedWageSum += r.avgWomenWage * r.womenCount;
-        validCountSum += r.womenCount;
-      }
-    });
-
-    return validCountSum > 0 ? (weightedWageSum / validCountSum) : 0;
+    return weightedAvg(records, 'avgWomenWage', 'womenCount');
   }
 
   /**
-   * Calculates Overall Average Wage (Men + Women combined)
-   * Prioritizes official reported Tableau/MoF gross wage (avgGrossRegular),
-   * weighted by employee count / jobs, with fallback to gender components.
-   * @param {Array<Object>} records 
-   * @returns {number}
+   * Calculates Overall Average Wage (Men + Women combined) from overview.csv.
+   * Prioritizes avgGrossRegular (a per-row combined-gender wage already
+   * reported by the ministry), weighted by monthly employee count, with
+   * fallback to the gender components when it's missing.
    */
   function calculateOverallAverageWage(records) {
     let weightedWageSum = 0;
@@ -147,13 +117,14 @@ window.DataValidator = (function() {
       let hc = (r.monthlyEmployeeCount !== null && r.monthlyEmployeeCount > 0)
         ? r.monthlyEmployeeCount
         : ((r.menCount || 0) + (r.womenCount || 0));
+      if (hc <= PRIVACY_THRESHOLD) return;
 
-      if (r.avgGrossRegular !== null && r.avgGrossRegular !== undefined && hc > 0) {
+      if (r.avgGrossRegular !== null && r.avgGrossRegular !== undefined) {
         weightedWageSum += r.avgGrossRegular * hc;
         validCountSum += hc;
       } else {
-        let mc = (r.menCount !== null && r.menCount > 0) ? r.menCount : 0;
-        let wc = (r.womenCount !== null && r.womenCount > 0) ? r.womenCount : 0;
+        let mc = (r.menCount !== null && r.menCount > PRIVACY_THRESHOLD) ? r.menCount : 0;
+        let wc = (r.womenCount !== null && r.womenCount > PRIVACY_THRESHOLD) ? r.womenCount : 0;
         if (r.avgMenWage !== null && mc > 0) {
           weightedWageSum += r.avgMenWage * mc;
           validCountSum += mc;
@@ -169,25 +140,11 @@ window.DataValidator = (function() {
   }
 
   function calculateWeightedAverageMenEmployerCost(records) {
-    let sum = 0, count = 0;
-    records.forEach(r => {
-      if (r.avgMenEmployerCost !== null && r.menCount !== null && r.menCount > 0) {
-        sum += r.avgMenEmployerCost * r.menCount;
-        count += r.menCount;
-      }
-    });
-    return count > 0 ? (sum / count) : 0;
+    return weightedAvg(records, 'avgMenEmployerCost', 'menCount');
   }
 
   function calculateWeightedAverageWomenEmployerCost(records) {
-    let sum = 0, count = 0;
-    records.forEach(r => {
-      if (r.avgWomenEmployerCost !== null && r.womenCount !== null && r.womenCount > 0) {
-        sum += r.avgWomenEmployerCost * r.womenCount;
-        count += r.womenCount;
-      }
-    });
-    return count > 0 ? (sum / count) : 0;
+    return weightedAvg(records, 'avgWomenEmployerCost', 'womenCount');
   }
 
   function calculateWeightedAverageEmployerCost(records) {
@@ -196,13 +153,14 @@ window.DataValidator = (function() {
       let hc = (r.monthlyEmployeeCount !== null && r.monthlyEmployeeCount > 0)
         ? r.monthlyEmployeeCount
         : ((r.menCount || 0) + (r.womenCount || 0));
+      if (hc <= PRIVACY_THRESHOLD) return;
 
-      if (r.avgEmployerCost !== null && r.avgEmployerCost !== undefined && hc > 0) {
+      if (r.avgEmployerCost !== null && r.avgEmployerCost !== undefined) {
         sum += r.avgEmployerCost * hc;
         count += hc;
       } else {
-        let mc = (r.menCount !== null && r.menCount > 0) ? r.menCount : 0;
-        let wc = (r.womenCount !== null && r.womenCount > 0) ? r.womenCount : 0;
+        let mc = (r.menCount !== null && r.menCount > PRIVACY_THRESHOLD) ? r.menCount : 0;
+        let wc = (r.womenCount !== null && r.womenCount > PRIVACY_THRESHOLD) ? r.womenCount : 0;
         if (r.avgMenEmployerCost !== null && mc > 0) {
           sum += r.avgMenEmployerCost * mc;
           count += mc;
@@ -216,11 +174,41 @@ window.DataValidator = (function() {
     return count > 0 ? (sum / count) : 0;
   }
 
+  // ── Full-time (partTime.csv "משרה מלאה") weighted averages ───────
+  // This is the source that actually matches the official published
+  // figures (verified against Mifal HaPayis, Bank of Israel and Haifa
+  // municipality — all within ~0.2%). Use this for any body/system/
+  // national-level wage or gap figure. It has no rank-level detail.
+
+  function calculateFTWeightedMenWage(partTimeRecords) {
+    return weightedAvg(partTimeRecords, 'ftMenWage', 'ftMenCount');
+  }
+
+  function calculateFTWeightedWomenWage(partTimeRecords) {
+    return weightedAvg(partTimeRecords, 'ftWomenWage', 'ftWomenCount');
+  }
+
+  function calculateFTWeightedOverallWage(partTimeRecords) {
+    return weightedAvg(partTimeRecords, 'ftTotalWage', 'ftTotalCount');
+  }
+
+  function calculateFTWeightedMenEmployerCost(partTimeRecords) {
+    return weightedAvg(partTimeRecords, 'ftMenEmployerCost', 'ftMenCount');
+  }
+
+  function calculateFTWeightedWomenEmployerCost(partTimeRecords) {
+    return weightedAvg(partTimeRecords, 'ftWomenEmployerCost', 'ftWomenCount');
+  }
+
+  function calculateFTWeightedEmployerCost(partTimeRecords) {
+    return weightedAvg(partTimeRecords, 'ftTotalEmployerCost', 'ftTotalCount');
+  }
+
   /**
    * Calculates Overall Gender Pay Gap (%)
    * Formula: ((AvgMenWage - AvgWomenWage) / AvgMenWage) * 100
-   * @param {number} avgMenWage 
-   * @param {number} avgWomenWage 
+   * @param {number} avgMenWage
+   * @param {number} avgWomenWage
    * @returns {number}
    */
   function calculateGenderPayGap(avgMenWage, avgWomenWage) {
@@ -229,65 +217,95 @@ window.DataValidator = (function() {
   }
 
   /**
-   * Safely calculates the aggregate pay gap across multiple records
-   * by ONLY including records where BOTH men and women have reported wages.
-   * This prevents "apples-to-oranges" artifacts (e.g., comparing men in body A to women in body B).
+   * Safely calculates the aggregate pay gap across multiple overview.csv
+   * records by ONLY including rows where BOTH men and women have reported
+   * wages. This prevents "apples-to-oranges" artifacts (e.g., comparing
+   * men in body A to women in body B).
    */
   function calculateAggregateGap(records) {
     const valid = records.filter(r => r.avgMenWage !== null && r.avgWomenWage !== null);
     if (valid.length === 0) return null;
-    
+
     const mw = calculateWeightedAverageMenWage(valid);
     const ww = calculateWeightedAverageWomenWage(valid);
     return calculateGenderPayGap(mw, ww);
   }
 
   /**
-   * Computes full aggregated KPIs object for a set of records
-   * @param {Array<Object>} records 
+   * Same idea as calculateAggregateGap but for partTime.csv FT columns —
+   * the correct source for body/system/national-level gap figures.
+   */
+  function calculateFTAggregateGap(partTimeRecords) {
+    const valid = partTimeRecords.filter(r => r.ftMenWage !== null && r.ftWomenWage !== null);
+    if (valid.length === 0) return null;
+
+    const mw = calculateFTWeightedMenWage(valid);
+    const ww = calculateFTWeightedWomenWage(valid);
+    return calculateGenderPayGap(mw, ww);
+  }
+
+  /**
+   * Computes full aggregated KPIs for a set of *partTime* records (the
+   * correct source for body/system/national-level figures — see file
+   * header). `overviewRecords` (optional) is only used to report the
+   * total headcount (all employees, not just full-time) and record count,
+   * matching what the rest of the dashboard already shows for "כלל
+   * המועסקים".
+   * @param {Array<Object>} partTimeRecords
+   * @param {Array<Object>} [overviewRecords]
    * @returns {Object}
    */
-  function computeKPIs(records) {
-    const totalRecords = records.length;
-    const bodies = [...new Set(records.map(r => r.bodyName))].filter(Boolean);
-    const years = [...new Set(records.map(r => r.year))].filter(Boolean);
-    const ranks = [...new Set(records.map(r => r.rank))].filter(Boolean);
+  function computeKPIs(partTimeRecords, overviewRecords) {
+    const avgMenWage = calculateFTWeightedMenWage(partTimeRecords);
+    const avgWomenWage = calculateFTWeightedWomenWage(partTimeRecords);
+    const overallWage = calculateFTWeightedOverallWage(partTimeRecords);
+    const payGap = calculateFTAggregateGap(partTimeRecords);
 
-    // If a single body with all its ranks is selected:
-    if (bodies.length === 1 && years.length === 1 && ranks.length > 1) {
-      const bmKey = `${bodies[0]}_${years[0]}`;
-      if (TABLEAU_BODY_BENCHMARKS[bmKey]) {
-        const bm = TABLEAU_BODY_BENCHMARKS[bmKey];
-        const avgMenEmployerCost = calculateWeightedAverageMenEmployerCost(records);
-        const avgWomenEmployerCost = calculateWeightedAverageWomenEmployerCost(records);
-        const overallEmployerCost = calculateWeightedAverageEmployerCost(records);
-        const employerCostGap = calculateGenderPayGap(avgMenEmployerCost, avgWomenEmployerCost);
+    const avgMenEmployerCost = calculateFTWeightedMenEmployerCost(partTimeRecords);
+    const avgWomenEmployerCost = calculateFTWeightedWomenEmployerCost(partTimeRecords);
+    const overallEmployerCost = calculateFTWeightedEmployerCost(partTimeRecords);
+    const employerCostGap = calculateGenderPayGap(avgMenEmployerCost, avgWomenEmployerCost);
 
-        return {
-          totalRecords,
-          totalMen: bm.menCount,
-          totalWomen: bm.womenCount,
-          totalEmployees: bm.totalEmployees,
-          avgMenWage: bm.avgMenWage,
-          avgWomenWage: bm.avgWomenWage,
-          overallWage: bm.overallWage,
-          genderPayGapPercent: bm.genderPayGapPercent,
-          avgMenEmployerCost: Math.round(avgMenEmployerCost * 100) / 100,
-          avgWomenEmployerCost: Math.round(avgWomenEmployerCost * 100) / 100,
-          overallEmployerCost: Math.round(overallEmployerCost * 100) / 100,
-          employerCostGapPercent: employerCostGap !== null ? Math.round(employerCostGap * 100) / 100 : null,
-        };
-      }
-    }
+    const basisRecords = overviewRecords || partTimeRecords;
+    const counts = overviewRecords
+      ? calculateTotalEmployees(overviewRecords)
+      : { totalMen: null, totalWomen: null, totalEmployees: null };
 
+    return {
+      totalRecords: basisRecords.length,
+      totalMen: counts.totalMen,
+      totalWomen: counts.totalWomen,
+      totalEmployees: counts.totalEmployees,
+      avgMenWage: Math.round(avgMenWage * 100) / 100,
+      avgWomenWage: Math.round(avgWomenWage * 100) / 100,
+      overallWage: Math.round(overallWage * 100) / 100,
+      genderPayGapPercent: payGap !== null ? Math.round(payGap * 100) / 100 : null,
+      avgMenEmployerCost: Math.round(avgMenEmployerCost * 100) / 100,
+      avgWomenEmployerCost: Math.round(avgWomenEmployerCost * 100) / 100,
+      overallEmployerCost: Math.round(overallEmployerCost * 100) / 100,
+      employerCostGapPercent: employerCostGap !== null ? Math.round(employerCostGap * 100) / 100 : null,
+    };
+  }
+
+  /**
+   * Same shape as computeKPIs, but computed entirely from overview.csv —
+   * the only source with rank-level detail. Use this only when a rank
+   * filter is active (partTime.csv has no rank column to filter by).
+   * @param {Array<Object>} records
+   * @returns {Object}
+   */
+  function computeOverviewKPIs(records) {
     const counts = calculateTotalEmployees(records);
-    const avgMenWage = calculateWeightedAverageMenWage(records);
-    const avgWomenWage = calculateWeightedAverageWomenWage(records);
+    const bothPresent = records.filter(r => r.avgMenWage !== null && r.avgWomenWage !== null);
+    const basis = bothPresent.length > 0 ? bothPresent : records;
+
+    const avgMenWage = calculateWeightedAverageMenWage(basis);
+    const avgWomenWage = calculateWeightedAverageWomenWage(basis);
     const overallWage = calculateOverallAverageWage(records);
     const payGap = calculateGenderPayGap(avgMenWage, avgWomenWage);
 
-    const avgMenEmployerCost = calculateWeightedAverageMenEmployerCost(records);
-    const avgWomenEmployerCost = calculateWeightedAverageWomenEmployerCost(records);
+    const avgMenEmployerCost = calculateWeightedAverageMenEmployerCost(basis);
+    const avgWomenEmployerCost = calculateWeightedAverageWomenEmployerCost(basis);
     const overallEmployerCost = calculateWeightedAverageEmployerCost(records);
     const employerCostGap = calculateGenderPayGap(avgMenEmployerCost, avgWomenEmployerCost);
 
@@ -309,31 +327,32 @@ window.DataValidator = (function() {
 
   /**
    * Generates and logs comprehensive validation tables to console
-   * @param {Array<Object>} records 
+   * @param {Array<Object>} partTimeRecords
+   * @param {Array<Object>} [overviewRecords]
    */
-  function runValidationReport(records) {
+  function runValidationReport(partTimeRecords, overviewRecords) {
     console.log("%c========================================================", "color: #2563eb; font-weight: bold;");
     console.log("%c DATA INTEGRITY VERIFICATION REPORT - STAGE 1", "color: #1e40af; font-size: 14px; font-weight: bold;");
     console.log("%c========================================================", "color: #2563eb; font-weight: bold;");
 
     // 1. Overall Dataset KPIs
-    const overall = computeKPIs(records);
+    const overall = computeKPIs(partTimeRecords, overviewRecords);
     console.log("%c\n1. Overall Dataset KPIs (All Years, All Systems):", "font-weight: bold; color: #047857;");
     console.table([overall]);
 
     // 2. Breakdown by Data Source (Monthly vs Annual)
-    const sources = [...new Set(records.map(r => r.source))];
+    const sources = [...new Set(partTimeRecords.map(r => r.source))];
     const sourceBreakdown = sources.map(src => {
-      const filtered = records.filter(r => r.source === src);
+      const filtered = partTimeRecords.filter(r => r.source === src);
       return { Source: src, ...computeKPIs(filtered) };
     });
     console.log("%c\n2. Breakdown by Data Source (Monthly vs Annual Salary):", "font-weight: bold; color: #047857;");
     console.table(sourceBreakdown);
 
     // 3. Breakdown by Year (2018 - 2024)
-    const years = [...new Set(records.map(r => r.year))].sort((a, b) => a - b);
+    const years = [...new Set(partTimeRecords.map(r => r.year))].sort((a, b) => a - b);
     const yearBreakdown = years.map(yr => {
-      const filtered = records.filter(r => r.year === yr);
+      const filtered = partTimeRecords.filter(r => r.year === yr);
       return { Year: yr, ...computeKPIs(filtered) };
     });
     console.log("%c\n3. Breakdown by Year (2018 - 2024):", "font-weight: bold; color: #047857;");
@@ -353,7 +372,6 @@ window.DataValidator = (function() {
   function validateLoadedData(datasets) {
     const checks = [];
     const pt = datasets.partTime || [];
-    const ov = datasets.overview || [];
 
     // 1. Check count invariant (ensure counts aren't percentages)
     const maxMen = Math.max(...pt.map(r => r.ftMenCount || 0), 0);
@@ -381,7 +399,8 @@ window.DataValidator = (function() {
       checks.push({ test: 'גבולות שכר ממוצע כללי', status: 'FAIL', error: `נמצאו ${boundViolations} חריגות מתמטיות` });
     }
 
-    // 3. Anchor Benchmark Test (Tekuma / Ashdod / Bank of Israel)
+    // 3. Anchor sanity check (מנהלת תקומה 2024) — a body with a distinctive,
+    // manually-verified headcount, useful for catching column-mapping breaks.
     const tekuma = pt.find(r => r.year === 2024 && (r.bodyName || '').includes('תקומה'));
     if (tekuma && tekuma.ftMenCount === 15 && tekuma.ftWomenCount === 34 && Math.round(tekuma.ftTotalWage) === 29833) {
       checks.push({ test: 'בדיקת עוגן נתוני זהב (מנהלת תקומה 2024)', status: 'PASS' });
@@ -397,17 +416,28 @@ window.DataValidator = (function() {
   }
 
   return {
+    PRIVACY_THRESHOLD,
+    weightedAvg,
     calculateTotalEmployees,
     computeComplementaryShares,
     calculateWeightedAverageMenWage,
     calculateWeightedAverageWomenWage,
     calculateOverallAverageWage,
+    calculateWeightedAverageMenEmployerCost,
+    calculateWeightedAverageWomenEmployerCost,
+    calculateWeightedAverageEmployerCost,
+    calculateFTWeightedMenWage,
+    calculateFTWeightedWomenWage,
+    calculateFTWeightedOverallWage,
+    calculateFTWeightedMenEmployerCost,
+    calculateFTWeightedWomenEmployerCost,
+    calculateFTWeightedEmployerCost,
     calculateGenderPayGap,
     calculateAggregateGap,
+    calculateFTAggregateGap,
     computeKPIs,
+    computeOverviewKPIs,
     runValidationReport,
     validateLoadedData,
-    TABLEAU_BENCHMARKS,
-    TABLEAU_BODY_BENCHMARKS
   };
 })();
