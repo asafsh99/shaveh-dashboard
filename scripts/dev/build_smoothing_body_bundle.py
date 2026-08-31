@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Regenerates data/smoothing_body_data.json and scripts/smoothing_body_data.js
-from the "גוף" (bodies/employers) sheet of the digital-salary source file.
-Run whenever that source file changes:
+Regenerates scripts/smoothing_body_data.js (the only format the app actually
+loads - a `data/smoothing_body_data.json` twin used to be written too, but
+nothing ever read it, so it was dropped) from the "גוף" (bodies/employers)
+sheet of the digital-salary source file. Run whenever that source file changes:
 
     python scripts/dev/build_smoothing_body_bundle.py
 
@@ -48,7 +49,6 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 SRC = 'data/שכר דיגיטלי גוף.xlsx'
 SHEET = 'גוף'
-OUT_JSON = 'data/smoothing_body_data.json'
 OUT_JS = 'scripts/smoothing_body_data.js'
 PRIVACY_THRESHOLD = 5
 
@@ -109,14 +109,11 @@ print(f'Parsed {len(records)} body-level records '
       f'({df["KVUTZA"].nunique()} groups, {df["MISRAD_GROUP"].nunique()} bodies, '
       f'years={sorted(df["SHANA"].unique().tolist())}).')
 
-with open(OUT_JSON, 'w', encoding='utf-8') as f:
-    json.dump(records, f, ensure_ascii=False, separators=(',', ':'))
-
 with open(OUT_JS, 'w', encoding='utf-8') as f:
     f.write('window.SMOOTHING_BODY_DATA = ')
     json.dump(records, f, ensure_ascii=False, separators=(',', ':'))
     f.write(';\n')
 
-for path in (OUT_JSON, OUT_JS):
+for path in (OUT_JS,):
     size_mb = os.path.getsize(path) / (1024 * 1024)
     print(f'Wrote {path} ({size_mb:.2f} MB)')
