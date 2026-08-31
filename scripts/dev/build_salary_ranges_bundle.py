@@ -5,7 +5,7 @@ import pandas as pd
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SRC = os.path.join(BASE_DIR, 'data', 'שכר דיגיטלי מגויר2018-2025- עדי ואסף (2).xlsx')
+SRC = os.path.join(BASE_DIR, 'data', 'שכר דיגיטלי גוף.xlsx')
 OUT = os.path.join(BASE_DIR, 'scripts', 'salary_ranges_bundle.js')
 
 BAND_ORDER = ['קטן מ-8', '8-12', '12-16', '16-20', '20-24', '24-28', '28-32', '32-36', '36-40', '40-44', 'גדול מ-44', 'לא מוגדר']

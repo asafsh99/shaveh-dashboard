@@ -147,7 +147,7 @@ window.App = (function() {
       bodyEl.disabled = true; bodyEl.classList.add('opacity-50');
       rankEl.disabled = true; rankEl.classList.add('opacity-50');
     } else if (tabId === 'digitalsalary') {
-      // Independent dataset ("שכר דיגיטלי מגויר" + DOCH1_DENSITY_FINAL) — global filter bar does not apply
+      // Independent dataset ("שכר דיגיטלי דירוג" + "שכר דיגיטלי גוף") — global filter bar does not apply
       yearEl.disabled = true; yearEl.classList.add('opacity-50', 'cursor-not-allowed');
       sysEl.disabled = true; sysEl.classList.add('opacity-50');
       if (subSysEl) { subSysEl.disabled = true; subSysEl.classList.add('opacity-50'); }

@@ -1,7 +1,7 @@
   // ── Digital Salary tab: embedded distribution/layers studio (ranks + bodies) ──
   window.DsStudio = (function () {
 
-    // Ranks (DOCH1_DENSITY_FINAL) report a real salary bin per row; bodies (the "גוף" sheet
+    // Ranks (שכר דיגיטלי דירוג) report a real salary bin per row; bodies (the "גוף" sheet
     // of the digital-salary file) only report one of these 11 fixed bands per row - there is
     // no finer resolution available for bodies at the source. Each band gets a representative
     // ₪ value so it can share the same numeric x-axis as the rank bins.

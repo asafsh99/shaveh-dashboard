@@ -5,7 +5,7 @@ source Excel file. Run this whenever the source file changes:
 
     python scripts/dev/build_smoothing_bundle.py
 
-Source: data/DOCH1_DENSITY_FINAL.xlsx (first/only sheet) — a bin-level
+Source: data/שכר דיגיטלי דירוג.xlsx (first/only sheet) — a bin-level
 salary histogram export (year x rank x group x gender x salary-bin),
 used by smoothing_studio.html to render smoothed salary-distribution
 curves. Multi-year (currently 2018-2025); the app's year selector and
@@ -40,7 +40,7 @@ import json, sys, os
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-SRC = 'data/DOCH1_DENSITY_FINAL.xlsx'
+SRC = 'data/שכר דיגיטלי דירוג.xlsx'
 OUT_JSON = 'data/smoothing_data.json'
 OUT_JS = 'scripts/smoothing_data.js'
 PRIVACY_THRESHOLD = 5  # matches DataEngine.PRIVACY_THRESHOLD used elsewhere in the dashboard

@@ -7,9 +7,9 @@ Run whenever that source file changes:
     python scripts/dev/build_smoothing_body_bundle.py
 
 This is the body-level counterpart to build_smoothing_bundle.py (which
-covers ranks from DOCH1_DENSITY_FINAL.xlsx). The two datasets are NOT
+covers ranks from שכר דיגיטלי דירוג.xlsx). The two datasets are NOT
 the same shape:
-  - Ranks (DOCH1_DENSITY_FINAL): one row per exact SALARY_MIDPOINT bin
+  - Ranks (שכר דיגיטלי דירוג): one row per exact SALARY_MIDPOINT bin
     (continuous-ish histogram, many distinct salary points per entity).
   - Bodies ("גוף" sheet): one row per one of 11 FIXED salary bands
     (kvuza_tvach) per body - the source simply does not report bodies
@@ -46,7 +46,7 @@ import json, sys, os
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-SRC = 'data/שכר דיגיטלי מגויר2018-2025- עדי ואסף (2).xlsx'
+SRC = 'data/שכר דיגיטלי גוף.xlsx'
 SHEET = 'גוף'
 OUT_JSON = 'data/smoothing_body_data.json'
 OUT_JS = 'scripts/smoothing_body_data.js'
