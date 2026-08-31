@@ -9,6 +9,14 @@ SRC_RANKS = os.path.join(BASE_DIR, 'data', 'שכר דיגיטלי דירוג.xls
 SRC_BODIES = os.path.join(BASE_DIR, 'data', 'שכר דיגיטלי גוף.xlsx')
 OUT = os.path.join(BASE_DIR, 'scripts', 'salary_ranges_bundle.js')
 
+# Matches DataEngine.PRIVACY_THRESHOLD used elsewhere in the dashboard, and the
+# same threshold already applied in build_smoothing_bundle.py / build_smoothing_body_bundle.py.
+# An entire rank/body entity is dropped when its total headcount is at or below
+# this floor; when the total is fine but one gender's headcount alone is at or
+# below it, only that gender's wage/cost/bands are suppressed (set to null) -
+# showing an average over 1-5 identifiable people is itself a disclosure.
+PRIVACY_THRESHOLD = 5
+
 BAND_ORDER = ['קטן מ-8', '8-12', '12-16', '16-20', '20-24', '24-28', '28-32', '32-36', '36-40', '40-44', 'גדול מ-44', 'לא מוגדר']
 BAND_LABELS = {
     # Hebrew "X עד Y" phrasing (rather than an en-dash) sidesteps RTL/bidi
@@ -112,18 +120,33 @@ def agg_block(sub: pd.DataFrame):
     }
 
 
+privacy_stats = {'entities_dropped': 0, 'gender_slices_suppressed': 0}
+
+
+def suppress_if_tiny(agg):
+    """Null out wage/cost/bands for a men-only or women-only slice that's too
+    small to publish safely; the headcount number itself is kept (counts alone
+    are already shown throughout the dashboard even for tiny groups)."""
+    if agg['headcount'] <= PRIVACY_THRESHOLD:
+        privacy_stats['gender_slices_suppressed'] += 1
+        return {**agg, 'avgWage': None, 'avgCost': None, 'layerPct': None, 'bands': []}
+    return agg
+
+
 def attach_gender(block, sub):
     """Compute the men/women split for a block and attach it in-place."""
     men = agg_block(sub[sub['NAME_MIN'] == 'גברים'])
     women = agg_block(sub[sub['NAME_MIN'] == 'נשים'])
-    block['menWage'] = men['avgWage']
-    block['womenWage'] = women['avgWage']
+    men_safe = suppress_if_tiny(men)
+    women_safe = suppress_if_tiny(women)
+    block['menWage'] = men_safe['avgWage']
+    block['womenWage'] = women_safe['avgWage']
     block['menHeadcount'] = men['headcount']
     block['womenHeadcount'] = women['headcount']
-    block['menLayerPct'] = men['layerPct']
-    block['womenLayerPct'] = women['layerPct']
-    block['menBands'] = men['bands']
-    block['womenBands'] = women['bands']
+    block['menLayerPct'] = men_safe['layerPct']
+    block['womenLayerPct'] = women_safe['layerPct']
+    block['menBands'] = men_safe['bands']
+    block['womenBands'] = women_safe['bands']
     return block
 
 
@@ -151,8 +174,10 @@ for year in years:
             rblock = agg_block(rsub)
             rblock['name'] = rk
             attach_gender(rblock, rsub)
-            if rblock['headcount'] > 0:
+            if rblock['headcount'] > PRIVACY_THRESHOLD:
                 ranks_out.append(rblock)
+            elif rblock['headcount'] > 0:
+                privacy_stats['entities_dropped'] += 1
         ranks_out.sort(key=lambda r: -r['headcount'])
 
         bodies_out = []
@@ -163,8 +188,10 @@ for year in years:
             sub_kutsa_vals = [v for v in bsub['TAT_KUTSA'].dropna().unique().tolist() if str(v).strip() not in ('', '-')]
             bblock['subGroup'] = sub_kutsa_vals[0] if sub_kutsa_vals else None
             attach_gender(bblock, bsub)
-            if bblock['headcount'] > 0:
+            if bblock['headcount'] > PRIVACY_THRESHOLD:
                 bodies_out.append(bblock)
+            elif bblock['headcount'] > 0:
+                privacy_stats['entities_dropped'] += 1
         bodies_out.sort(key=lambda b: -b['headcount'])
 
         groups_out.append({
@@ -265,6 +292,10 @@ with open(OUT, 'w', encoding='utf-8') as f:
     f.write('window.SALARY_RANGES_DATA = ')
     json.dump(bundle, f, ensure_ascii=False)
     f.write(';\n')
+
+print(f"Privacy suppression (threshold={PRIVACY_THRESHOLD}): "
+      f"{privacy_stats['entities_dropped']} rank/body entities dropped entirely (total headcount <= {PRIVACY_THRESHOLD}), "
+      f"{privacy_stats['gender_slices_suppressed']} gender-specific wage/band slices hidden (that gender's headcount <= {PRIVACY_THRESHOLD}).")
 
 size_mb = os.path.getsize(OUT) / (1024 * 1024)
 print(f'Wrote {OUT} ({size_mb:.2f} MB)')
