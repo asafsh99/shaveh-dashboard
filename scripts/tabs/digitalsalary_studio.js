@@ -1297,7 +1297,17 @@
       const smoothType = AppState.smoothType;
       const param = AppState.smoothParam;
 
-      const rawPoints = allSalarySteps.map(sal => {
+      // allSalarySteps is pooled across every active series/year, so a wide-ranging one
+      // (e.g. a different rank or year reaching ₪86k) would otherwise leave a flat
+      // zero-value tail trailing off a narrower series (e.g. "מהנדסים" topping out at
+      // ₪58,500) once the shared grid runs past its own real bins. Since this is a
+      // numeric x-axis (not category), each series can simply be trimmed to its own
+      // real salary range - no padding required to keep series "aligned".
+      const minSal = computedSeries.sortedBins[0].salary;
+      const maxSal = computedSeries.sortedBins[computedSeries.sortedBins.length - 1].salary;
+      const steps = allSalarySteps.filter(sal => sal >= minSal && sal <= maxSal);
+
+      const rawPoints = steps.map(sal => {
         const b = computedSeries.bins.get(sal);
         let val = 0;
         if (b) {
@@ -1337,7 +1347,7 @@
 
         const nonZeroBins = computedSeries.sortedBins.filter(b => b.count > 0);
 
-        const kdePoints = allSalarySteps.map(x => {
+        const kdePoints = steps.map(x => {
           let density = 0;
           nonZeroBins.forEach(b => {
             const u = (x - b.salary) / bandwidth;
