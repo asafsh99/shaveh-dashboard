@@ -48,7 +48,7 @@ import json, sys, os
 sys.stdout.reconfigure(encoding='utf-8')
 
 SRC = 'data/שכר דיגיטלי גוף.xlsx'
-SHEET = 'גוף'
+SHEET = 'sahar_dig_misrad'
 OUT_JS = 'scripts/smoothing_body_data.js'
 PRIVACY_THRESHOLD = 5
 

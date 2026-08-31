@@ -33,7 +33,7 @@ df_ranks_all = pd.read_excel(SRC_RANKS, sheet_name=0, header=0)
 df_ranks_all.columns = [str(c).strip() for c in df_ranks_all.columns]
 
 print('Reading bodies from', SRC_BODIES)
-df_bodies_all = pd.read_excel(SRC_BODIES, sheet_name='גוף', header=0)
+df_bodies_all = pd.read_excel(SRC_BODIES, sheet_name='sahar_dig_misrad', header=0)
 df_bodies_all.columns = [str(c).strip() for c in df_bodies_all.columns]
 
 # The rank file is bin-level (exact SALARY_MIDPOINT per row) - it has no pre-computed band
@@ -232,14 +232,14 @@ bundle = {
         'years': years,
         'defaultYear': 2024 if 2024 in years else years[-1],
         'partialYears': [y for y in years if y >= 2025],
-        'source': 'דירוגים: שכר דיגיטלי דירוג.xlsx (bin-level) | גופים: שכר דיגיטלי גוף.xlsx, גיליון "גוף" — אגף השכר באוצר',
+        'source': 'דירוגים: שכר דיגיטלי דירוג.xlsx (bin-level) | גופים: שכר דיגיטלי גוף.xlsx, גיליון "sahar_dig_misrad" — אגף השכר באוצר',
         'bandOrder': BAND_ORDER,
         'bandLabels': BAND_LABELS,
         'methodologyNote': (
             'שכר ממוצע מחושב כסך ברוטו שוטף והפרשים (SUM_BRUTO_SHOTEF_HEFRESHIM) חלקי סך חודשי-משרה; '
             'עלות העסקה מחושבת באותו אופן מתוך SUM_ALUT_HAASAKA. עמודת AVG_SACHAR_P במקור אינה משמשת כי היא קבועה '
             'לכל שורות אותה קבוצה (KVUTZA) באותה שנה ואינה משתנה בין דירוגים/גופים. '
-            'מקורות שונים לדירוגים ולגופים: נתוני הגופים מגיעים מקובץ "שכר דיגיטלי גוף" (גיליון "גוף"), שם חודשי-המשרה '
+            'מקורות שונים לדירוגים ולגופים: נתוני הגופים מגיעים מקובץ "שכר דיגיטלי גוף" (גיליון "sahar_dig_misrad"), שם חודשי-המשרה '
             'מגיעים מעמודת COUNT_MISPAR_OVED (ספירת חודשי-עבודה גולמית, ללא שקלול חלקיות משרה). נתוני הדירוגים מגיעים '
             'מקובץ נפרד "שכר דיגיטלי דירוג" (bin-level, מדרגת שכר מדויקת ולא רצועה קבועה) שאינו כולל את עמודת '
             'COUNT_MISPAR_OVED — לכן חודשי-המשרה לדירוגים מחושבים מעמודת TOTAL_MISROT ("משרות", משוקללת לפי חלקיות '
