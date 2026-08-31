@@ -132,6 +132,10 @@ window.App = (function() {
   }
 
   function applyFilterUIConstraints(tabId) {
+    const filterBarEl = document.getElementById('globalFilterBar');
+    if (filterBarEl) filterBarEl.classList.toggle('hidden', tabId === 'digitalsalary');
+    if (tabId === 'digitalsalary') return; // independent dataset, own filters — bar is hidden entirely
+
     const yearEl = document.getElementById('filterYear');
     const sysEl = document.getElementById('btnDropdown-system');
     const subSysEl = document.getElementById('btnDropdown-subSystem');
@@ -143,13 +147,6 @@ window.App = (function() {
       yearEl.disabled = true;
       yearEl.classList.add('opacity-50', 'cursor-not-allowed');
       yearLabel.classList.remove('hidden');
-      if (subSysEl) { subSysEl.disabled = true; subSysEl.classList.add('opacity-50'); }
-      bodyEl.disabled = true; bodyEl.classList.add('opacity-50');
-      rankEl.disabled = true; rankEl.classList.add('opacity-50');
-    } else if (tabId === 'digitalsalary') {
-      // Independent dataset ("שכר דיגיטלי דירוג" + "שכר דיגיטלי גוף") — global filter bar does not apply
-      yearEl.disabled = true; yearEl.classList.add('opacity-50', 'cursor-not-allowed');
-      sysEl.disabled = true; sysEl.classList.add('opacity-50');
       if (subSysEl) { subSysEl.disabled = true; subSysEl.classList.add('opacity-50'); }
       bodyEl.disabled = true; bodyEl.classList.add('opacity-50');
       rankEl.disabled = true; rankEl.classList.add('opacity-50');
