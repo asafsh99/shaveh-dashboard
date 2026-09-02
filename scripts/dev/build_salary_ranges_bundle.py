@@ -44,9 +44,10 @@ print('Reading bodies from', SRC_BODIES)
 df_bodies_all = pd.read_excel(SRC_BODIES, sheet_name='sahar_dig_misrad', header=0)
 df_bodies_all.columns = [str(c).strip() for c in df_bodies_all.columns]
 
-# The rank file is bin-level (exact SALARY_MIDPOINT per row) - it has no pre-computed band
-# bucket and no COUNT_MISPAR_OVED (position-months). Derive both from what IS available so
-# the shared agg_block()/attach_gender() logic below needs no further changes for ranks.
+# The rank file is bin-level (exact SALARY_MIDPOINT per row) and, as of 2026-08-31, carries
+# COUNT_MISPAR_OVED (position-months) natively - same column, same definition as the body
+# file - so both entity types now use the exact same wage-denominator formula. It still has
+# no pre-computed band bucket though, so that part is still derived here.
 def salary_to_band(midpoint):
     if pd.isna(midpoint):
         return 'לא מוגדר'
@@ -64,10 +65,6 @@ def salary_to_band(midpoint):
     return 'גדול מ-44'
 
 df_ranks_all['kvuza_tvach'] = df_ranks_all['SALARY_MIDPOINT'].apply(salary_to_band)
-# TOTAL_MISROT ("משרות", FTE-weighted position-months) substitutes for the missing
-# COUNT_MISPAR_OVED (raw employee-months regardless of FTE share) - see methodologyNote
-# below for the real, verified size of the gap this introduces.
-df_ranks_all['COUNT_MISPAR_OVED'] = df_ranks_all['TOTAL_MISROT']
 
 years = sorted(set(df_ranks_all['SHANA'].dropna().astype(int).tolist()) | set(df_bodies_all['SHANA'].dropna().astype(int).tolist()))
 print('Years found:', years)
@@ -266,15 +263,11 @@ bundle = {
             'שכר ממוצע מחושב כסך ברוטו שוטף והפרשים (SUM_BRUTO_SHOTEF_HEFRESHIM) חלקי סך חודשי-משרה; '
             'עלות העסקה מחושבת באותו אופן מתוך SUM_ALUT_HAASAKA. עמודת AVG_SACHAR_P במקור אינה משמשת כי היא קבועה '
             'לכל שורות אותה קבוצה (KVUTZA) באותה שנה ואינה משתנה בין דירוגים/גופים. '
-            'מקורות שונים לדירוגים ולגופים: נתוני הגופים מגיעים מקובץ "שכר דיגיטלי גוף" (גיליון "sahar_dig_misrad"), שם חודשי-המשרה '
-            'מגיעים מעמודת COUNT_MISPAR_OVED (ספירת חודשי-עבודה גולמית, ללא שקלול חלקיות משרה). נתוני הדירוגים מגיעים '
-            'מקובץ נפרד "שכר דיגיטלי דירוג" (bin-level, מדרגת שכר מדויקת ולא רצועה קבועה) שאינו כולל את עמודת '
-            'COUNT_MISPAR_OVED — לכן חודשי-המשרה לדירוגים מחושבים מעמודת TOTAL_MISROT ("משרות", משוקללת לפי חלקיות '
-            'משרה בפועל) במקום. בבדיקה אמפירית (2024, אחים ואחיות) שתי השיטות כמעט זהות בקבוצות עם משרות מלאות ברובן '
-            '(למשל משרדי ממשלה, הפרש <0.5%), אך נבדלות ב-15%-17% בקבוצות עם היקף משרה חלקית גבוה יותר (מערכת הבריאות, '
-            'שלטון מקומי) — כיוון ש-TOTAL_MISROT משקלל חלקיות משרה בעוד COUNT_MISPAR_OVED סופר כל חודש-עבודה כיחידה '
-            'שלמה בלי קשר לאחוז המשרה. המשמעות: שכר ממוצע לדירוג עשוי להיות מעט שונה (עד כ-17%, תלוי בקבוצה) משכר '
-            'ממוצע לאותו דירוג לו חושב מקובץ "גוף" — זהו הבדל שיטתי בין שני קבצי המקור, לא טעות בחישוב. גם רצועות '
+            'שני קבצים נפרדים לדירוגים ולגופים ("שכר דיגיטלי דירוג" ו"שכר דיגיטלי גוף"), אך מאז 2026-08-31 שניהם '
+            'כוללים את אותה עמודת COUNT_MISPAR_OVED (ספירת חודשי-עבודה גולמית, ללא שקלול חלקיות משרה) בהגדרה זהה, '
+            'כך שנוסחת חודשי-המשרה זהה לחלוטין בין דירוגים לגופים - אין יותר הבדל שיטתי בין שני המקורות. '
+            '(עד לתאריך זה קובץ הדירוגים לא כלל את העמודה, וחודשי-המשרה חושבו משם מעמודת TOTAL_MISROT כתחליף - '
+            'תחליף שנמדד אמפירית כמקרב אך לא זהה, בפער של עד כ-17% בקבוצות עם היקף משרה חלקית גבוה.) גם רצועות '
             'השכר (bands) לדירוגים אינן מגיעות מעמודה מוכנה מראש אלא מחושבות ישירות ממדרגת השכר המדויקת '
             '(SALARY_MIDPOINT) של כל שורה. '
             'שנת 2025 חלקית (לא כל המערכות דיווחו עדיין, ובחלקן החודשים שדווחו חלקיים) — יש להתייחס אליה בזהירות. '
