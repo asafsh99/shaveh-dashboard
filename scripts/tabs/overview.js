@@ -594,32 +594,62 @@ window.TabOverview = (function () {
       ? [...new Set(partTimeRecords.map(r => r.system))].filter(Boolean)
       : [...new Set(records.map(r => r.system))].filter(Boolean);
 
+    // A stacked layer built by subtracting two independently-computed weighted averages is
+    // only sound if both averages are computed over the SAME rows. If some source rows are
+    // missing just the tax/cost field for part of the year (a real, previously-seen data
+    // gap - see conversation: this is exactly how a Ministry-of-Finance Tableau data error
+    // in "משרדי ממשלה" surfaced here first, as a suspicious ₪0 "תוספת למס" layer), gross
+    // and taxGross end up averaged over different subsets, and the subtraction can go
+    // negative and get silently clipped to 0 by Math.max - rendering as a perfectly
+    // legitimate-looking empty layer instead of a visible gap. Restricting every field to
+    // rows where ALL of them are present keeps the three layers on a shared, comparable
+    // basis, and lets a genuine 0 be told apart from "we simply don't have this number."
+    function jointValid(sub, fields, weightField) {
+      return sub.filter(r => fields.every(f => r[f] != null) && r[weightField] > T);
+    }
+
     const data = systems.map(sys => {
       if (useFT) {
         const sub = partTimeRecords.filter(r => r.system === sys);
-        const gross = DataValidator.calculateFTWeightedOverallWage(sub);
-        const taxGross = DataValidator.weightedAvg(sub, 'ftTotalTaxableGross', 'ftTotalCount', T);
-        const employerCost = DataValidator.weightedAvg(sub, 'ftTotalEmployerCost', 'ftTotalCount', T);
+        const validSub = jointValid(sub, ['ftTotalWage', 'ftTotalTaxableGross', 'ftTotalEmployerCost'], 'ftTotalCount');
+        const gross = DataValidator.weightedAvg(validSub, 'ftTotalWage', 'ftTotalCount', T);
+        const taxGross = DataValidator.weightedAvg(validSub, 'ftTotalTaxableGross', 'ftTotalCount', T);
+        const employerCost = DataValidator.weightedAvg(validSub, 'ftTotalEmployerCost', 'ftTotalCount', T);
+        const grossFallback = gross != null ? gross : DataValidator.calculateFTWeightedOverallWage(sub);
         return {
           system: sys,
-          gross: Math.round(gross),
-          taxAdd: Math.max(0, Math.round((taxGross || gross) - gross)),
-          costAdd: Math.max(0, Math.round((employerCost || taxGross || gross) - (taxGross || gross))),
-          totalCost: Math.round(employerCost || taxGross || gross)
+          gross: Math.round(grossFallback || 0),
+          taxAdd: gross != null && taxGross != null ? Math.max(0, Math.round(taxGross - gross)) : 0,
+          costAdd: gross != null && taxGross != null && employerCost != null ? Math.max(0, Math.round(employerCost - taxGross)) : 0,
+          totalCost: Math.round((employerCost != null ? employerCost : (taxGross != null ? taxGross : grossFallback)) || 0),
+          // No jointly-valid row at all for this system → we have no basis whatsoever for
+          // the tax/cost layers (not even a suspicious 0, an outright unknown).
+          missingLayers: validSub.length === 0
         };
       }
       const sub = records.filter(r => r.system === sys);
-      const gross = DataValidator.calculateOverallAverageWage(sub);
-      const taxGross = DataValidator.weightedAvg(sub, 'avgTaxableGross', 'monthlyEmployeeCount', T);
-      const employerCost = DataValidator.weightedAvg(sub, 'avgEmployerCost', 'monthlyEmployeeCount', T);
+      const validSub = jointValid(sub, ['avgGrossRegular', 'avgTaxableGross', 'avgEmployerCost'], 'monthlyEmployeeCount');
+      const gross = DataValidator.weightedAvg(validSub, 'avgGrossRegular', 'monthlyEmployeeCount', T);
+      const taxGross = DataValidator.weightedAvg(validSub, 'avgTaxableGross', 'monthlyEmployeeCount', T);
+      const employerCost = DataValidator.weightedAvg(validSub, 'avgEmployerCost', 'monthlyEmployeeCount', T);
+      const grossFallback = gross != null ? gross : DataValidator.calculateOverallAverageWage(sub);
       return {
         system: sys,
-        gross: Math.round(gross),
-        taxAdd: Math.max(0, Math.round((taxGross || gross) - gross)),
-        costAdd: Math.max(0, Math.round((employerCost || taxGross || gross) - (taxGross || gross))),
-        totalCost: Math.round(employerCost || taxGross || gross)
+        gross: Math.round(grossFallback || 0),
+        taxAdd: gross != null && taxGross != null ? Math.max(0, Math.round(taxGross - gross)) : 0,
+        costAdd: gross != null && taxGross != null && employerCost != null ? Math.max(0, Math.round(employerCost - taxGross)) : 0,
+        totalCost: Math.round((employerCost != null ? employerCost : (taxGross != null ? taxGross : grossFallback)) || 0),
+        missingLayers: validSub.length === 0
       };
     }).filter(d => d.gross > 0);
+
+    // A layer that computes to exactly 0 while the base is well above 0 is almost never a
+    // genuine value (every real employer has *some* tax withholding and *some* pension/
+    // employer-cost contribution) - flag it so it reads as "unknown" rather than "none".
+    data.forEach(d => {
+      d.taxAddFlag = d.gross > 0 && d.taxAdd === 0;
+      d.costAddFlag = d.gross > 0 && d.costAdd === 0;
+    });
 
     if (salaryTiersChart) salaryTiersChart.dispose();
     salaryTiersChart = echarts.init(el);
@@ -637,10 +667,16 @@ window.TabOverview = (function () {
           const sys = params[0].name;
           const d = data.find(x => x.system === sys);
           if (!d) return sys;
+          const taxAddText = d.taxAddFlag
+            ? `<span style="color:#dc2626;">⚠ חסר נתון במקור (לא בהכרח 0 אמיתי)</span>`
+            : fmtShekel(d.taxAdd);
+          const costAddText = d.costAddFlag
+            ? `<span style="color:#dc2626;">⚠ חסר נתון במקור (לא בהכרח 0 אמיתי)</span>`
+            : fmtShekel(d.costAdd);
           return `<strong>${sys}</strong><br>` +
                  `ברוטו שוטף: ${fmtShekel(d.gross)}<br>` +
-                 `תוספת ברוטו למס: ${fmtShekel(d.taxAdd)}<br>` +
-                 `הפרשות מעסיק: ${fmtShekel(d.costAdd)}<br>` +
+                 `תוספת ברוטו למס: ${taxAddText}<br>` +
+                 `הפרשות מעסיק: ${costAddText}<br>` +
                  `<strong>סה"כ עלות העסקה: ${fmtShekel(d.totalCost)}</strong>`;
         },
         textStyle: { fontFamily: 'Heebo' }
@@ -665,7 +701,21 @@ window.TabOverview = (function () {
       series: [
         { name: 'ברוטו שוטף', type: 'bar', stack: 'total', data: data.map(d => d.gross), itemStyle: { color: '#334155' } },
         { name: 'תוספת למס', type: 'bar', stack: 'total', data: data.map(d => d.taxAdd), itemStyle: { color: '#F59E0B' } },
-        { name: 'הפרשות מעסיק', type: 'bar', stack: 'total', data: data.map(d => d.costAdd), itemStyle: { color: '#14B8A6' } }
+        { name: 'הפרשות מעסיק', type: 'bar', stack: 'total', data: data.map(d => d.costAdd), itemStyle: { color: '#14B8A6' } },
+        // Visible-at-a-glance marker for a layer that's suspiciously exactly 0 (missing
+        // source data, not a genuine value) - sits just above the bar it applies to, so it
+        // doesn't require hovering to notice.
+        {
+          name: 'נתון חסר',
+          type: 'scatter',
+          data: data.map(d => (d.taxAddFlag || d.costAddFlag) ? d.totalCost : null),
+          symbol: 'triangle',
+          symbolSize: 12,
+          itemStyle: { color: '#dc2626' },
+          symbolOffset: [0, -10],
+          tooltip: { show: false },
+          silent: true,
+        }
       ]
     });
   }
@@ -685,6 +735,75 @@ window.TabOverview = (function () {
   let breakdownCompareMode = 'gender'; // 'gender' | 'absolute'
   let _lastBreakdownRecords = [];
   let _lastBreakdownPartTime = [];
+  let _lastBreakdownYear = null;
+
+  // ── Absolute-mode tooltip enrichment: real salary-band distribution ─────────
+  // EXPERIMENTAL - see conversation notes: this cross-references the entirely separate
+  // "שכר דיגיטלי" dataset (scripts/salary_ranges_bundle.js, already loaded unconditionally
+  // on every page load - no extra fetch cost) by exact name match against this chart's
+  // row key. Measured exact-match coverage on 2024: system 8/8 (100%), rank 76/88 (86.4%),
+  // bodyName 660/864 (76.4%) - the two datasets use different official-name conventions
+  // for some bodies (e.g. overview's "איכילוב" vs the bundle's full "איכילוב המרכז הרפואי
+  // תל אביב ע"ש סוראסקי"), so roughly 1 in 4 bodies won't resolve. Deliberately exact-match
+  // only, no fuzzy matching (that was explicitly deferred - false matches would show a
+  // wrong body's distribution as if it were correct, worse than showing nothing). Rows
+  // that don't resolve just render the tooltip without this section - no error, no
+  // "not found" clutter for what's actually the common case for some breakdown types.
+  function _findBandsForRow(rowKey) {
+    const bundle = window.SALARY_RANGES_DATA;
+    if (!bundle || !_lastBreakdownYear) return null;
+    const yearData = bundle.byYear[String(_lastBreakdownYear)];
+    if (!yearData) return null;
+
+    if (breakdownType === 'system') {
+      const g = yearData.groups.find(g => g.name === rowKey);
+      return g && g.overall ? g.overall.bands : null;
+    }
+    if (breakdownType === 'bodyName') {
+      for (const g of yearData.groups) {
+        const bd = g.bodies.find(b => b.name === rowKey);
+        if (bd) return bd.bands;
+      }
+      return null;
+    }
+    if (breakdownType === 'rank') {
+      for (const g of yearData.groups) {
+        const rk = g.ranks.find(r => r.name === rowKey);
+        if (rk) return rk.bands;
+      }
+      return null;
+    }
+    // subSystem has no equivalent grouping in the digital-salary bundle at all.
+    return null;
+  }
+
+  // Tiny inline sparkline-style histogram (11 bars, height = share of employees in that
+  // band) - shows the actual distribution shape, not just the single average the rest of
+  // the tooltip already gives.
+  function _miniBandBarsHtml(bands) {
+    if (!bands || !bands.length) return '';
+    // "לא מוגדר" is a near-always-empty catch-all bucket, not a real salary band - it just
+    // wastes a bar's worth of width here without telling anyone anything.
+    const real = bands.filter(b => b.band !== 'לא מוגדר');
+    if (!real.length) return '';
+    const CHART_H = 60;
+    const maxPct = Math.max(...real.map(b => b.pct || 0), 0.0001);
+    const peakIdx = real.reduce((best, b, i) => (b.pct || 0) > (real[best].pct || 0) ? i : best, 0);
+    const bars = real.map((b, i) => {
+      const h = Math.max(3, Math.round(((b.pct || 0) / maxPct) * CHART_H));
+      const color = i === peakIdx ? '#2563eb' : '#94a3b8';
+      return `<div style="width:11px;height:${h}px;background:${color};border-radius:2px 2px 0 0;" title="${b.label}: ${((b.pct || 0) * 100).toFixed(1)}%"></div>`;
+    }).join('');
+    return (
+      `<div style="border-top:1px solid #e2e8f0; padding-top:6px; margin-top:6px;">` +
+        `<div style="font-size:10px; color:#94a3b8; margin-bottom:4px;">התפלגות שכר לפי רצועות (שכר דיגיטלי):</div>` +
+        `<div style="display:flex; align-items:flex-end; gap:3px; height:${CHART_H}px;">${bars}</div>` +
+        `<div style="display:flex; justify-content:space-between; margin-top:2px; font-size:9px; color:#cbd5e1;">` +
+          `<span>עד 8K</span><span>מעל 44K</span>` +
+        `</div>` +
+      `</div>`
+    );
+  }
 
   // Rank-level breakdown (or any breakdown while a rank filter is active)
   // must come from overview.csv — it's the only source with rank detail.
@@ -792,9 +911,10 @@ window.TabOverview = (function () {
     return _aggregateBreakdownFromFT(records, partTimeRecords, groupKey);
   }
 
-  function renderBodyBreakdown(records, partTimeRecords) {
+  function renderBodyBreakdown(records, partTimeRecords, year) {
     _lastBreakdownRecords = records;
     _lastBreakdownPartTime = partTimeRecords;
+    _lastBreakdownYear = year;
     _drawBodyBreakdownChart();
     _bindBodyBreakdownControls();
   }
@@ -920,17 +1040,23 @@ window.TabOverview = (function () {
           const menWageText = d.menWage ? `₪${Math.round(d.menWage).toLocaleString('he-IL')}` : '—';
           const womenWageText = d.womenWage ? `₪${Math.round(d.womenWage).toLocaleString('he-IL')}` : '—';
           const fmtCnt = n => Math.round(n).toLocaleString('he-IL');
-          return `<div style="font-family:Heebo,sans-serif; text-align:right; min-width:200px;" dir="rtl">` +
-            `<strong style="font-size:13px; color:#0f172a;">${d.key}</strong><br>` +
-            `<div style="font-size:11px; color:#64748b; margin-top:2px;">סה"כ עובדים: <strong>${fmtCnt(d.hc)}</strong></div>` +
-            `<div style="font-size:11px; color:#334155; margin-bottom:6px;">שכר ממוצע כללי: <strong>${overallWageText}</strong></div>` +
-            `<div style="border-top:1px solid #e2e8f0; padding-top:5px; margin-top:4px; line-height:1.6;">` +
-              `<span style="color:#1D4ED8">■</span> <strong>גברים:</strong> ${fmtCnt(d.menCount)} עובדים (${d.menPct.toFixed(1)}%) · שכר: ${menWageText}<br>` +
-              `<span style="color:#DB2777">■</span> <strong>נשים:</strong> ${fmtCnt(d.womenCount)} עובדות (${d.womenPct.toFixed(1)}%) · שכר: ${womenWageText}` +
+          const bands = isAbsolute ? _findBandsForRow(d.key) : null;
+          // When the band distribution is available, compact everything above it (smaller
+          // type, merged lines) so the chart people asked to see gets the visual weight,
+          // not the text they can already read off the bars on screen.
+          const compact = !!bands;
+          return `<div style="font-family:Heebo,sans-serif; text-align:right; min-width:${compact ? 230 : 200}px;" dir="rtl">` +
+            `<strong style="font-size:${compact ? 12 : 13}px; color:#0f172a;">${d.key}</strong><br>` +
+            `<div style="font-size:${compact ? 10 : 11}px; color:#64748b; margin-top:2px;">${fmtCnt(d.hc)} עובדים · שכר ממוצע: <strong style="color:#334155;">${overallWageText}</strong></div>` +
+            `<div style="border-top:1px solid #e2e8f0; padding-top:${compact ? 3 : 5}px; margin-top:${compact ? 3 : 4}px; line-height:${compact ? 1.3 : 1.6}; font-size:${compact ? 10 : 12}px;">` +
+              `<span style="color:#1D4ED8">■</span> ${fmtCnt(d.menCount)} (${d.menPct.toFixed(0)}%) · ${menWageText}` +
+              (compact ? '&nbsp;&nbsp;' : '<br>') +
+              `<span style="color:#DB2777">■</span> ${fmtCnt(d.womenCount)} (${d.womenPct.toFixed(0)}%) · ${womenWageText}` +
             `</div>` +
-            `<div style="border-top:1px solid #e2e8f0; padding-top:4px; margin-top:4px; font-size:11px; color:#334155;">` +
+            `<div style="border-top:1px solid #e2e8f0; padding-top:${compact ? 3 : 4}px; margin-top:${compact ? 3 : 4}px; font-size:${compact ? 10 : 11}px; color:#334155;">` +
               `פער שכר מגדרי: <strong style="color:${d.gap > 0 ? '#e11d48' : '#059669'}">‪${gap}%‬</strong>` +
             `</div>` +
+            (isAbsolute ? _miniBandBarsHtml(bands) : '') +
             `</div>`;
         },
         textStyle: { fontFamily: 'Heebo' }
@@ -1256,7 +1382,7 @@ window.TabOverview = (function () {
     renderHeatmap(records);
     renderDistribution(records, partTimeRecords);
     renderSalaryTiersChart(records, partTimeRecords);
-    renderBodyBreakdown(records, partTimeRecords);
+    renderBodyBreakdown(records, partTimeRecords, year);
     renderInsights(records, year);
   }
 
