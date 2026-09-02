@@ -677,6 +677,12 @@ window.TabOverview = (function () {
   let breakdownSort = 'hc';       // 'hc' | 'gap' | 'overallWage' | 'womenWage' | 'menWage'
   let breakdownSortDir = 'desc';  // 'desc' | 'asc'
   let breakdownTopN = 15;
+  // Right-panel wage comparison: 'gender' is the original diverging men-vs-women view;
+  // 'absolute' shows one neutral-colored bar per row (overallWage) with no gender split at
+  // all - deliberately a single unidirectional bar chart, not just a recolored diverging
+  // one, so the two modes read as genuinely different questions ("who's paid more, men or
+  // women, at this body/rank" vs "which bodies/ranks pay the most overall").
+  let breakdownCompareMode = 'gender'; // 'gender' | 'absolute'
   let _lastBreakdownRecords = [];
   let _lastBreakdownPartTime = [];
 
@@ -855,6 +861,9 @@ window.TabOverview = (function () {
     const menPcts   = intShares.map(s => s.menPct).reverse();
     const womenWages = top.map(d => d.womenWage ? -(Math.round(d.womenWage)) : null).reverse();
     const menWages   = top.map(d => d.menWage   ?  Math.round(d.menWage)    : null).reverse();
+    const overallWages = top.map(d => d.overallWage != null ? Math.round(d.overallWage) : null).reverse();
+
+    const isAbsolute = breakdownCompareMode === 'absolute';
 
     // Dynamic height: min 420, 36px per bar
     const chartH = Math.max(420, top.length * 36 + 130);
@@ -867,10 +876,11 @@ window.TabOverview = (function () {
     const trunc = (s, max) => s && s.length > max ? s.substring(0, max - 1) + '…' : (s || '');
     const truncNames = names.map(n => trunc(n, 24));
 
-    // Max absolute salary for symmetric x-axis on right chart
-    const maxSalary = Math.max(
-      ...top.map(d => Math.max(d.menWage || 0, d.womenWage || 0)), 1
-    );
+    // Max absolute salary for the right chart's axis - symmetric around 0 for the gender
+    // diverging view, or a plain 0-to-max range for the absolute (non-gender) view.
+    const maxSalary = isAbsolute
+      ? Math.max(...top.map(d => d.overallWage || 0), 1)
+      : Math.max(...top.map(d => Math.max(d.menWage || 0, d.womenWage || 0)), 1);
     const salaryAxisMax = Math.ceil(maxSalary / 5000) * 5000;
 
     const fmtK = v => {
@@ -891,7 +901,7 @@ window.TabOverview = (function () {
           textStyle: { fontFamily: 'Heebo', fontSize: 14, fontWeight: 700, color: '#1e293b' }
         },
         {
-          text: 'שכר ברוטו שוטף והפרשים נשים מול גברים',
+          text: isAbsolute ? 'שכר ברוטו שוטף והפרשים — ממוצע כללי (ללא פילוח מגדרי)' : 'שכר ברוטו שוטף והפרשים נשים מול גברים',
           left: '75%',
           textAlign: 'center',
           top: 8,
@@ -926,7 +936,7 @@ window.TabOverview = (function () {
         textStyle: { fontFamily: 'Heebo' }
       },
       legend: {
-        data: ['נשים', 'גברים', 'שכר נשים', 'שכר גברים'],
+        data: isAbsolute ? ['נשים', 'גברים', 'שכר ממוצע כללי'] : ['נשים', 'גברים', 'שכר נשים', 'שכר גברים'],
         bottom: 5,
         left: 'center',
         textStyle: { fontFamily: 'Heebo', fontSize: 11, color: '#475569' },
@@ -956,10 +966,10 @@ window.TabOverview = (function () {
           splitLine: { lineStyle: { color: 'rgba(148,163,184,0.15)' } },
           axisTick: { show: false }
         },
-        { // Right: diverging salary
+        { // Right: diverging salary (gender mode) or plain 0-to-max (absolute mode)
           type: 'value',
           gridIndex: 1,
-          min: -salaryAxisMax,
+          min: isAbsolute ? 0 : -salaryAxisMax,
           max: salaryAxisMax,
           axisLabel: {
             formatter: v => '₪' + fmtK(v),
@@ -1028,42 +1038,62 @@ window.TabOverview = (function () {
           barMaxWidth: 26,
           emphasis: { focus: 'series' }
         },
-        {
-          // RIGHT CHART — Women wage (negative → left)
-          name: 'שכר נשים',
-          type: 'bar',
-          xAxisIndex: 1,
-          yAxisIndex: 1,
-          stack: 'salary',
-          data: womenWages,
-          itemStyle: { color: '#DB2777', borderRadius: [3, 0, 0, 3] },
-          label: {
-            show: true,
-            position: 'left',
-            formatter: p => p.value !== null ? '₪' + fmtK(p.value) : '',
-            fontFamily: 'Heebo', fontSize: 10, color: '#9D174D', fontWeight: 600
+        ...(isAbsolute ? [
+          {
+            // RIGHT CHART (absolute mode) — single neutral bar, overall wage, no gender split
+            name: 'שכר ממוצע כללי',
+            type: 'bar',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            data: overallWages,
+            itemStyle: { color: '#475569', borderRadius: [0, 3, 3, 0] },
+            label: {
+              show: true,
+              position: 'right',
+              formatter: p => p.value !== null ? '₪' + fmtK(p.value) : '',
+              fontFamily: 'Heebo', fontSize: 10, color: '#1e293b', fontWeight: 600
+            },
+            barMaxWidth: 24,
+            emphasis: { focus: 'series', itemStyle: { color: '#334155' } }
+          }
+        ] : [
+          {
+            // RIGHT CHART (gender mode) — Women wage (negative → left)
+            name: 'שכר נשים',
+            type: 'bar',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            stack: 'salary',
+            data: womenWages,
+            itemStyle: { color: '#DB2777', borderRadius: [3, 0, 0, 3] },
+            label: {
+              show: true,
+              position: 'left',
+              formatter: p => p.value !== null ? '₪' + fmtK(p.value) : '',
+              fontFamily: 'Heebo', fontSize: 10, color: '#9D174D', fontWeight: 600
+            },
+            barMaxWidth: 24,
+            emphasis: { focus: 'series', itemStyle: { color: '#BE185D' } }
           },
-          barMaxWidth: 24,
-          emphasis: { focus: 'series', itemStyle: { color: '#BE185D' } }
-        },
-        {
-          // RIGHT CHART — Men wage (positive → right)
-          name: 'שכר גברים',
-          type: 'bar',
-          xAxisIndex: 1,
-          yAxisIndex: 1,
-          stack: 'salary',
-          data: menWages,
-          itemStyle: { color: '#1D4ED8', borderRadius: [0, 3, 3, 0] },
-          label: {
-            show: true,
-            position: 'right',
-            formatter: p => p.value !== null ? '₪' + fmtK(p.value) : '',
-            fontFamily: 'Heebo', fontSize: 10, color: '#1E3A8A', fontWeight: 600
-          },
-          barMaxWidth: 24,
-          emphasis: { focus: 'series', itemStyle: { color: '#1E40AF' } }
-        }
+          {
+            // RIGHT CHART (gender mode) — Men wage (positive → right)
+            name: 'שכר גברים',
+            type: 'bar',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            stack: 'salary',
+            data: menWages,
+            itemStyle: { color: '#1D4ED8', borderRadius: [0, 3, 3, 0] },
+            label: {
+              show: true,
+              position: 'right',
+              formatter: p => p.value !== null ? '₪' + fmtK(p.value) : '',
+              fontFamily: 'Heebo', fontSize: 10, color: '#1E3A8A', fontWeight: 600
+            },
+            barMaxWidth: 24,
+            emphasis: { focus: 'series', itemStyle: { color: '#1E40AF' } }
+          }
+        ])
       ]
     });
 
@@ -1084,14 +1114,26 @@ window.TabOverview = (function () {
     });
   }
 
+  // These sort criteria are inherently about the men/women split - in absolute mode the
+  // right chart shows one neutral overall-wage bar with no gender split at all, so sorting
+  // by one of these while looking at that chart would order rows by a number that isn't
+  // shown anywhere on screen. Disabled together with the mode switch below.
+  const GENDER_ONLY_SORTS = ['womenWage', 'menWage', 'gap'];
+
   function _syncBreakdownControlsUI() {
+    const isAbsolute = breakdownCompareMode === 'absolute';
+
     // Sort buttons UI
     document.querySelectorAll('.btnBreakdownSort').forEach(b => {
       const a = b.dataset.sort === breakdownSort;
+      const disabled = isAbsolute && GENDER_ONLY_SORTS.includes(b.dataset.sort);
       b.classList.toggle('bg-white', a);
       b.classList.toggle('text-slate-900', a);
       b.classList.toggle('shadow-sm', a);
-      b.classList.toggle('text-slate-600', !a);
+      b.classList.toggle('text-slate-600', !a && !disabled);
+      b.disabled = disabled;
+      b.classList.toggle('opacity-40', disabled);
+      b.classList.toggle('cursor-not-allowed', disabled);
     });
 
     // Direction buttons UI
@@ -1115,6 +1157,15 @@ window.TabOverview = (function () {
     // Radio UI
     document.querySelectorAll('.bodyBreakdownRadio').forEach(r => {
       r.checked = (r.value === breakdownType);
+    });
+
+    // Compare-mode buttons UI
+    document.querySelectorAll('.btnBreakdownCompareMode').forEach(b => {
+      const a = b.dataset.compare === breakdownCompareMode;
+      b.classList.toggle('bg-white', a);
+      b.classList.toggle('text-slate-900', a);
+      b.classList.toggle('shadow-sm', a);
+      b.classList.toggle('text-slate-600', !a);
     });
   }
 
@@ -1170,6 +1221,25 @@ window.TabOverview = (function () {
     document.querySelectorAll('.btnBreakdownN').forEach(btn => {
       btn.addEventListener('click', () => {
         breakdownTopN = parseInt(btn.dataset.n);
+        _syncBreakdownControlsUI();
+        _drawBodyBreakdownChart();
+      });
+    });
+
+    // Compare-mode buttons (gender vs absolute)
+    const cBtns = document.querySelectorAll('.btnBreakdownCompareMode');
+    cBtns.forEach(btn => {
+      const fresh = btn.cloneNode(true);
+      btn.parentNode.replaceChild(fresh, btn);
+    });
+    document.querySelectorAll('.btnBreakdownCompareMode').forEach(btn => {
+      btn.addEventListener('click', () => {
+        breakdownCompareMode = btn.dataset.compare;
+        // A gender-only sort would silently order rows by a number the absolute chart
+        // never shows - fall back to the one sort that always matches what's displayed.
+        if (breakdownCompareMode === 'absolute' && GENDER_ONLY_SORTS.includes(breakdownSort)) {
+          breakdownSort = 'overallWage';
+        }
         _syncBreakdownControlsUI();
         _drawBodyBreakdownChart();
       });

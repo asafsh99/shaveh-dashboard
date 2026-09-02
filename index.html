@@ -352,6 +352,14 @@
               <input type="radio" name="breakdownType" value="subSystem" class="bodyBreakdownRadio accent-blue-600"> תת-מערכת
             </label>
           </div>
+          <!-- Wage comparison mode: by gender (diverging) vs absolute (single bar per row) -->
+          <div class="flex items-center gap-2 text-xs font-semibold text-slate-600">
+            <span class="text-slate-500">תצוגת שכר:</span>
+            <div class="flex items-center gap-1 shrink-0 bg-slate-100 border border-slate-200 rounded-lg p-1">
+              <button data-compare="gender" class="btnBreakdownCompareMode px-2.5 py-1 text-xs font-bold rounded transition-colors bg-white text-slate-900 shadow-sm">לפי מגדר</button>
+              <button data-compare="absolute" class="btnBreakdownCompareMode px-2.5 py-1 text-xs font-bold rounded transition-colors text-slate-600 hover:bg-white">השוואה אבסולוטית</button>
+            </div>
+          </div>
         </div>
         <div id="chartBodyBreakdown" style="height: 520px; width: 100%;"></div>
       </section>
