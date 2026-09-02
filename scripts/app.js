@@ -133,39 +133,29 @@ window.App = (function() {
 
   function applyFilterUIConstraints(tabId) {
     const filterBarEl = document.getElementById('globalFilterBar');
-    if (filterBarEl) filterBarEl.classList.toggle('hidden', tabId === 'digitalsalary');
-    if (tabId === 'digitalsalary') return; // independent dataset, own filters — bar is hidden entirely
+    const hideBarEntirely = tabId === 'digitalsalary' || tabId === 'trends';
+    if (filterBarEl) filterBarEl.classList.toggle('hidden', hideBarEntirely);
+    if (hideBarEntirely) return; // independent tab, own filters (or no filters at all) — bar is hidden entirely
 
     const yearEl = document.getElementById('filterYear');
     const sysEl = document.getElementById('btnDropdown-system');
     const subSysEl = document.getElementById('btnDropdown-subSystem');
     const bodyEl = document.getElementById('btnDropdown-body');
     const rankEl = document.getElementById('btnDropdown-rank');
-    const yearLabel = document.getElementById('yearFilterAlert');
 
-    if (tabId === 'trends') {
-      yearEl.disabled = true;
-      yearEl.classList.add('opacity-50', 'cursor-not-allowed');
-      yearLabel.classList.remove('hidden');
-      if (subSysEl) { subSysEl.disabled = true; subSysEl.classList.add('opacity-50'); }
-      bodyEl.disabled = true; bodyEl.classList.add('opacity-50');
+    yearEl.disabled = false;
+    yearEl.classList.remove('opacity-50', 'cursor-not-allowed');
+
+    sysEl.disabled = false; sysEl.classList.remove('opacity-50');
+    if (subSysEl) { subSysEl.disabled = false; subSysEl.classList.remove('opacity-50'); }
+    bodyEl.disabled = false; bodyEl.classList.remove('opacity-50');
+
+    // Rank is only relevant for Overview and Ranks tabs
+    if (tabId === 'quality') {
       rankEl.disabled = true; rankEl.classList.add('opacity-50');
+      state.filters.rank = []; // Clear rank if moving to Quality
     } else {
-      yearEl.disabled = false;
-      yearEl.classList.remove('opacity-50', 'cursor-not-allowed');
-      yearLabel.classList.add('hidden');
-      
-      sysEl.disabled = false; sysEl.classList.remove('opacity-50');
-      if (subSysEl) { subSysEl.disabled = false; subSysEl.classList.remove('opacity-50'); }
-      bodyEl.disabled = false; bodyEl.classList.remove('opacity-50');
-      
-      // Rank is only relevant for Overview and Ranks tabs
-      if (tabId === 'quality') {
-        rankEl.disabled = true; rankEl.classList.add('opacity-50');
-        state.filters.rank = []; // Clear rank if moving to Quality
-      } else {
-        rankEl.disabled = false; rankEl.classList.remove('opacity-50');
-      }
+      rankEl.disabled = false; rankEl.classList.remove('opacity-50');
     }
   }
 
